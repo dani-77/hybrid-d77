@@ -68,6 +68,11 @@ jobs:
           sudo chown -R 1000:1000 cbuild-out
           docker run --rm --privileged --security-opt label=disable \
             -v "$PWD:/src" -w /src hybrid-d77-cbuild
+          # Hand it back: the container wrote its output as uid 1000,
+          # but the *next* step (Checksum) runs as the runner's own
+          # user -- confirmed the hard way, "SHA256SUMS: Permission
+          # denied" writing into a dir still owned by 1000.
+          sudo chown -R "$(id -u):$(id -g)" cbuild-out
 
       - name: Checksum
         run: |
