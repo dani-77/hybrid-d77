@@ -1,0 +1,18 @@
+###############################################################################
+
+Welcome to Chimera Linux. To log in, use either of:
+
+	- root:@PASSWORD@
+	- @USER@:@PASSWORD@
+
+The `@USER@` user is in the group `wheel`, which has `doas(1)` permissions.
+
+To install the system, please follow the documentation. Both local and
+network installations are possible from this media, with network install
+being the recommended approach.
+
+Thank you for trying Chimera Linux!
+
+    https://chimera-linux.org
+
+###############################################################################

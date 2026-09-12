@@ -1,0 +1,4 @@
+/build/
+/apk-cache/
+*.iso
+*.iso.sha256
