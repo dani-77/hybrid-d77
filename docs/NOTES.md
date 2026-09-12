@@ -115,3 +115,141 @@ Naming: the public-facing name is **hybrid-d77** deliberately, not
 `d77chimera` -- see the memory file for why (Chimera's own name stays
 out of the product name this time, learned from `d77void` staying
 permanently tied to Void's name).
+
+## 2026-09-12 evening :: official GNOME ISO built + written, real desktop packages scaffolded
+
+### Official, unmodified GNOME live: built and confirmed working
+
+Built via `container/` (Containerfile + entrypoint.sh + build.sh), through
+`sudo podman`, using **Chimera's own official container image**
+(`docker.io/chimeralinux/chimera:latest`) as the build host -- not a
+custom Alpine-based container. Two real bugs found and fixed getting
+there:
+
+- Alpine's own `apk-tools` (edge) cannot read Chimera's repo/package
+  format at all: `ERROR: ... ADB compression not supported`. Chimera
+  ships a newer apk-tools 3.x with a binary "ADB" index/package format
+  that's simply incompatible. Fix: don't fight it, build FROM Chimera's
+  own container (it ships its own correct apk-tools) -- "usa o
+  container deles, não reinventes a roda".
+- The official Chimera container doesn't ship `mount(8)`, which
+  `mklive.sh` calls directly against the host (not inside a chroot) to
+  set up pseudo-filesystems: `./mklive.sh: mount: not found`. Fixed by
+  `apk add --repository .../main util-linux-mount` in the Containerfile
+  (the specific subpackage that provides `mount`, not a generic
+  "util-linux" meta package).
+- `mklive.sh` writes its output `.iso` into **the current working
+  directory** (`vendor/chimera-live/` itself), *not* into the `build/`
+  directory passed as an argument. `entrypoint.sh` originally looked in
+  `build/*.iso` and silently produced nothing -- fixed to `cp *.iso`
+  from the chimera-live dir.
+
+Result: `chimera-linux-x86_64-LIVE-20260912-gnome.iso` (~1.93 GB),
+written to `/dev/sdb` (Kingston DataTraveler USB) via `dd`, confirmed
+0 errors. Proves the whole `chimera-live` pipeline works end to end on
+this host before adapting anything.
+
+### Real cbuild template API (confirmed against cbuild's own source)
+
+Sparse-cloned `chimera-linux/cports` (`src/cbuild/core/template.py`) to
+verify rather than guess:
+
+- `self.install_files(path, dest, symlinks=True, name=None)` -- copies
+  a directory `path` into `self.destdir / dest / (name or path.name)`.
+  For a source-less `build_style = "meta"` package (no `source=` tree
+  fetched, so `self.cwd` isn't meaningful), pass an **absolute** path
+  via `self.template_path / "skel"` -- pathlib's `/` operator discards
+  the left operand once the right side is already absolute, so this
+  reliably resolves to the package's own directory regardless of `cwd`.
+- `self.install_file(src, dest, mode=0o644, name=None, glob=False)` --
+  single file, `dest` is a directory.
+- `self.install_dir(dest, mode=0o755)`.
+- `self.files_path = self.template_path / "files"`.
+- `pre_install`/`install`/`post_install` are **build-time-only**
+  template phases (part of building the `.apk` on the build machine),
+  NOT a target-system `apk add`-time hook. The only real install-time
+  hook mechanism is `triggers` (directory-path-watch, not unconditional
+  like Alpine's `.trigger`) -- not needed here in the end.
+
+### Repo tier correction: `main` vs `user`
+
+First pass wrongly concluded `udiskie`, `greetd`, and `libseat-seatd`
+didn't exist in cports at all, based on `apk search` against `main`
+only. **User caught this** ("podes ver no cports como trata o
+chimera") -- searched the actual GitHub repo directly and found all of
+them real, just filed under the separate **`user`** repo tier
+(community-maintained, cports' equivalent of Alpine's
+community/AUR): `user/greetd/template.py`, `user/udiskie/template.py`,
+etc. `mklive.sh`'s own default repo (`--repository .../current/main`)
+only applies when **no** `-r` flag is given at all -- passing any `-r`
+disables the default entirely, so once `user` is needed, `main` has to
+be passed explicitly too, or it's silently dropped.
+
+### Argument-order bug in mklive-image.sh -> mklive.sh forwarding
+
+`mklive-image.sh`'s own `getopts` consumes only its own flags then
+forwards its leftover `"$@"` verbatim onto `mklive.sh -p ... -f ...
+"$@"`. `mklive.sh`'s own `getopts` stops parsing at the first non-flag
+word (the `build` dir argument) -- so any `-r`/`-k` meant for
+`mklive.sh` has to be placed **before** `build` in the outer
+`mklive-image.sh` invocation, or it lands as a stray positional arg
+instead of a real option. Fixed in `iso/mklive-d77.sh`:
+`./mklive-image.sh -b sway -- -r <main> -r <user> build "$@"`.
+
+### The real desktop packages: h77-dots / h77-sway-dots / sway variant
+
+Per the user's own 3-part plan, split into:
+
+1. **`pkg/h77-dots`** -- general app dotfiles (foot, alacritty, kitty,
+   qt5ct/qt6ct, Kvantum), `50-udisks.rules`, `motd`, and
+   `backgrounds/d77.png` (the wallpaper, sourced from d77devuan so any
+   future non-sway variant gets it too), installed to `/etc/skel`.
+   Sources: `~/d77void/common/config/*` and `~/d77devuan/pkg/
+   d77-sway-skel/skel/.config/{foot,backgrounds}` (read-only
+   references -- the d77void-exception applies here since this is a
+   *different* repo).
+2. **`pkg/h77-sway-dots`** -- sway/swaylock/swaync dotfiles (from
+   `~/d77void/sway/skel/.config/*`, closest match in the family) plus a
+   brand-new `yambar/config.yml` (waybar isn't packaged in Chimera at
+   all -- confirmed, the user's own call to switch), `depends =
+   ["h77-dots"]`. `sway/config`'s `bar {}` block replaced with `exec
+   yambar`; wallpaper line fixed to `~/.config/backgrounds/d77.png`.
+   `.profile` (not `.bash_profile` -- Chimera's default shell is plain
+   `/bin/sh`) execs `sway` on tty1 when no Wayland/X session is active.
+3. **`mklive-image.sh`'s new `sway)` case** -- every package name
+   individually verified against the real repo (not guessed): sway +
+   family (swaybg/swaylock/swayidle), yambar, foot, elogind,
+   libseat-seatd(-dinit), dbus(-dinit), polkit(-dinit),
+   networkmanager(-dinit), pipewire/wireplumber/pavucontrol,
+   xdg-desktop-portal(-wlr), udisks/udiskie(-dinit), plus our own
+   `h77-dots h77-sway-dots`.
+
+### Login design: plain TTY, no greeter -- final, user-decided
+
+`greetd` genuinely exists in cports (`user` tier: `greetd`,
+`greetd-dinit`, `greetd-man`) but is **deliberately not used**. User's
+explicit call, several messages converging on this: Void's and
+Chimera's own convention is a plain `getty` `login:` prompt +
+`/etc/motd` documenting credentials, autologin into a shell that execs
+sway via `.profile`. User/root and passwords are left as **Chimera's
+own default** (`anon`/`chimera`, `root`/`chimera`, same pattern as
+Void's `anon`/`voidlinux`) -- explicitly: build no custom user-creation
+logic, trust that convention. `udiskie -a` (already present, unmodified,
+in the inherited sway config) handles real auto-mount; `motd` documents
+both credential pairs.
+
+### Still open
+
+- **`h77-dots`/`h77-sway-dots` are template.py + skel content only --
+  not built `.apk` files.** Needs a real `cports`/`cbuild` toolchain
+  bootstrap, not attempted yet. This is the actual next blocker for a
+  fully-our-own live image.
+- `storage` group creation (needed for udiskie's polkit rule to grant
+  anything) -- not yet wired anywhere; belongs in the sway variant's
+  own live-setup, not in either meta-package (neither has an
+  install-time hook).
+- Whether `anon`/`chimera` truly is Chimera's shipped default (vs.
+  something to provision ourselves) -- taking the user's word for it,
+  not yet confirmed against an actual boot.
+- Disk-installer work is explicitly **deferred** -- "o trabalho de
+  instalar deixamos para depois". Current scope is the live ISO only.

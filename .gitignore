@@ -1,4 +1,6 @@
 /build/
 /apk-cache/
+vendor/chimera-live/build/
+vendor/chimera-live/apk-cache/
 *.iso
 *.iso.sha256

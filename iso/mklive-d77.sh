@@ -1,21 +1,28 @@
 #!/bin/sh
-# hybrid-d77 :: wrapper around vendor/chimera-live/mklive.sh, same shape
-# as their own mklive-image.sh's -b flag (see that file for the base/
-# gnome/plasma cases this is modeled on).
+# hybrid-d77 :: our own "sway" image variant, via chimera-live's own
+# mklive-image.sh -b flag mechanism (see vendor/chimera-live/
+# mklive-image.sh's "sway" case, added 2026-09-12).
 #
-# NOT YET WORKING -- scaffolding only (2026-09-12). Needs, at minimum:
-#   - a local cports checkout + `cbuild` run producing a real repo for
-#     -r/-k below (pkg/d77-sway-skel isn't buildable yet, see its
-#     template.py TODOs)
-#   - confirming the base package set (sway/waybar/foot/... availability
-#     in cports) actually matches what's listed there
+# NOT YET FULLY WORKING: h77-dots and h77-sway-dots (our own cports
+# packages, pkg/h77-dots and pkg/h77-sway-dots) don't exist as built
+# .apk files yet -- that needs a real cports/cbuild checkout + toolchain
+# bootstrap, not done yet (see docs/NOTES.md). Every other package name
+# in the "sway" case IS verified against the real repo already.
 #
-# Intended usage, once real:
-#   cd vendor/chimera-live && ../../iso/mklive-d77.sh
+# Once a local cports build exists, pass it here via -r/-k, e.g.:
+#   ./mklive-d77.sh -r /path/to/cports/packages/main -k /path/to/cports/etc/keys
 set -e
 cd "$(dirname "$0")/../vendor/chimera-live"
-
-PKGS="base-full base-live linux-stable d77-sway-skel"
-
-# TODO: -r <path to our cports build output>, -k <our signing key dir>
-exec ./mklive.sh -f d77 -p "$PKGS" "$@"
+# -r main is passed explicitly: mklive.sh's own default repo only kicks
+# in when NO -r is given at all, so once we add -r for the `user` tier
+# (needed for greetd/udiskie/seatd), main has to be listed too or it's
+# silently dropped. These have to come BEFORE the `build` positional
+# arg: mklive-image.sh forwards its own "$@" verbatim onto the end of
+# `mklive.sh -p ... -f ...`, and mklive.sh's getopts stops at the first
+# non-flag word -- so anything meant to be a real -r/-k/etc option has
+# to precede `build` in THIS invocation too, or it lands as a stray
+# positional arg on mklive.sh's side instead of being parsed.
+exec ./mklive-image.sh -b sway -- \
+    -r https://repo.chimera-linux.org/current/main \
+    -r https://repo.chimera-linux.org/current/user \
+    build "$@"

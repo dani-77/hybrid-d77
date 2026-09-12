@@ -1,0 +1,26 @@
+# hybrid-d77 :: build container for vendor/chimera-live's mklive-image.sh.
+#
+# Use Chimera's OWN official container image as the build host, rather
+# than reinventing it on Alpine -- their apk-tools build is what actually
+# understands their package format (Alpine's apk-tools 2026 edge choked
+# with "ADB compression not supported" against Chimera's repo, confirmed
+# 2026-09-12). docker.io/chimeralinux/chimera is Docker Hub's official
+# Chimera Linux image, published by chimera-live's own publish-docker.sh.
+#
+#   sudo podman build -t hybrid-d77-build -f container/Containerfile .
+#   sudo podman run --rm --privileged --security-opt label=disable \
+#       -v "$PWD:/src" -w /src hybrid-d77-build
+
+FROM docker.io/chimeralinux/chimera:latest
+
+# the base container image doesn't ship mount(8) -- mklive.sh calls it
+# directly (not via chroot) to set up pseudo-filesystems in HOST_DIR, so
+# it has to be on the outer container, not just bootstrapped into
+# HOST_DIR by the script itself. Confirmed 2026-09-12:
+# "./mklive.sh: mount: not found".
+RUN apk add --no-cache --no-interactive \
+        --repository https://repo.chimera-linux.org/current/main \
+        util-linux-mount
+
+WORKDIR /src
+ENTRYPOINT ["/src/container/entrypoint.sh"]
