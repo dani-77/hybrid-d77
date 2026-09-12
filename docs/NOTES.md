@@ -259,3 +259,101 @@ both credential pairs.
   not yet confirmed against an actual boot.
 - Disk-installer work is explicitly **deferred** -- "o trabalho de
   instalar deixamos para depois". Current scope is the live ISO only.
+
+## 2026-09-12 late evening :: disk-installer, first slice
+
+Live ISO confirmed working on real hardware (a physical boot photo,
+Toshiba laptop) -- wallpaper, yambar bar, fuzzel launcher with
+foot/foot-client/foot-server/volume-control/yambar all indexed. That
+unblocked starting the installer side.
+
+### chimera-installer/chimera-bootstrap, verified against real source
+
+A ChatGPT suggestion prompted fetching and reading the actual
+`chimera-linux/chimera-install-scripts` source (`chimera-installer`,
+`chimera-bootstrap`) rather than taking the summary on faith. It
+checked out accurate on every specific claim:
+
+- `chimera-installer -c CONF`: real flag. `config_load()` reads any
+  `INSTALL_CONFIG_*` line from that file straight into the
+  environment; `config_get`/`config_set` auto-prefix with
+  `INSTALL_CONFIG_` when reading/writing. So a config file with
+  `INSTALL_CONFIG_PACKAGES="..."` is the real, correct mechanism.
+- `menu_packages()` stores into `PACKAGES` (via `config_set_answer`),
+  read later as `extrapkgs` and `apk add`ed into the target.
+- `chimera-bootstrap -l "$sysroot"` (local) vs `chimera-bootstrap
+  "$sysroot"` (network) -- exact, `chimera-installer`'s own source at
+  the bootstrap-invocation point.
+- `useradd -R "$sysroot" -m ...` runs AFTER the extra-packages apk-add
+  step, confirming a package's `/etc/skel` content really does reach
+  the new user's home with zero manual `cp -r`.
+
+**The one thing worth getting precisely right, missed on a first pass
+and corrected after the user pointed back at the local-source part of
+the original answer**: `chimera-bootstrap`'s LOCAL mode
+(`INSTALL_LOCAL=1`, which is `chimera-installer`'s own DEFAULT unless
+the Source menu is changed) does NOT apk-install anything for the base
+system. It does a **plain `tar` copy** of
+`/run/live/rootfs/filesystem.*` (the live's own mounted erofs/squashfs
+root) straight into the target:
+
+```sh
+tar -cf - -C "$INSTALL_LOCAL_PATH" . | tar -xpf - -C "$ROOT_DIR"
+```
+
+No apk, no network, no repo reachability needed for anything already
+part of the live's own package set -- which includes `h77-dots`/
+`h77-sway-dots` (and the kernel, and the bootloader packages from
+`base-live`, and everything else in `mklive-image.sh`'s sway `PKGS`),
+since they're installed on the live itself. This is the exact same
+lesson d77alpine learned the hard way (copy the live literally instead
+of re-installing via the package manager) -- except here it's already
+built into upstream's own installer, natively.
+
+The real, separate "extra packages" step (`menu_install`'s own
+`apk add "$@"` via `chimera-chroot`) runs **unconditionally after the
+bootstrap step, regardless of local vs network source** -- so
+declaring `h77-dots`/`h77-sway-dots` in `INSTALL_CONFIG_PACKAGES`
+would be actively wrong for local installs: they're already copied by
+the tar step, and listing them again would force an avoidable
+apk/network round-trip (which would also just fail outright with no
+repo configured for our own local-only packages). `installer.conf`
+therefore deliberately does NOT set `PACKAGES` at all.
+
+### What got built
+
+- **`pkg/h77-installer`** -- thin wrapper package. `files/
+  installer.conf` (`INSTALL_CONFIG_SOURCE=local`,
+  `INSTALL_CONFIG_KERNEL=stable`, `INSTALL_CONFIG_HOSTNAME=hybrid-d77`
+  -- deliberately NOT `SystemRoot`/disk layout, that has to stay
+  interactive, and deliberately NOT `PACKAGES`, see above) installed
+  to `/etc/h77/installer.conf`; `files/h77-installer` (`exec
+  chimera-installer -c /etc/h77/installer.conf "$@"`) installed to
+  `/usr/bin`. NOT `depends = ["chimera-install-scripts"]` -- hit the
+  exact same cbuild limitation as h77-dots' bash ("ERROR: template
+  'chimera-install-scripts' cannot be resolved", even though the real
+  `main/chimera-install-scripts/template.py` exists) -- listed
+  directly in `mklive-image.sh`'s package set instead, same as bash.
+- `mklive-image.sh`'s sway case: added `chimera-install-scripts` and
+  `h77-dots h77-sway-dots h77-installer` (installer needs root --
+  `doas h77-installer`, opendoas being Chimera's own default via
+  `base-full-misc`, not `sudo` -- noted in `motd` now too).
+- `container/cbuild-entrypoint.sh` generalized from a hardcoded
+  two-package list to a loop over `H77_PKGS="h77-dots h77-sway-dots
+  h77-installer"` -- adding a future package now only needs a name
+  added there and to `mklive-image.sh`'s own list.
+- Same `pkgdesc` lint rules bit again on the first pass (must start
+  uppercase, <=72 chars, no parenthetical subdescription) -- fixed
+  before even trying a build this time, now that the pattern is known.
+
+### Still open
+
+- Network-source installs need someone to fill in `Packages` by hand
+  in the menu (nothing pre-fills that path yet) -- out of scope for
+  this first slice, local-source (the default, from the live USB
+  itself) is what's actually been built for.
+- Not yet tested on a real install run (booted + actually walked
+  through `doas h77-installer` to a disk) -- the ISO build succeeding
+  and the package resolving is as far as this got tonight.
+- `SystemRoot`/partitioning remains fully interactive, by design --
+  nothing here attempts to guess a target machine's disk layout.

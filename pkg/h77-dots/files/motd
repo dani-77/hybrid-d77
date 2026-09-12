@@ -4,3 +4,5 @@ Welcome to hybrid-d77 (Chimera Linux + Sway).
   user: anon     password: chimera
   root: root     password: chimera
 
+  To install to disk: doas h77-installer
+

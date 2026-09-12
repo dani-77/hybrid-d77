@@ -1,0 +1,9 @@
+#!/bin/sh
+# hybrid-d77 :: thin wrapper around Chimera's own chimera-installer,
+# pre-loaded with this project's defaults (see /etc/h77/installer.conf).
+# Not a custom installer -- chimera-installer does all the real work
+# (partitioning, bootstrap, user creation, bootloader); this only saves
+# re-typing the same answers every time. Needs root -- run via doas
+# (opendoas is Chimera's own default, part of base-full-misc; there is
+# no `sudo` package in this image unless someone adds one by hand).
+exec chimera-installer -c /etc/h77/installer.conf "$@"

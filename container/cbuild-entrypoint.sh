@@ -1,14 +1,18 @@
 #!/bin/sh
 # Runs inside the hybrid-d77-cbuild container, as the non-root "builder"
 # user (cbuild refuses root outright). Bootstraps a local cports
-# checkout + build root, drops our own pkg/h77-dots and
-# pkg/h77-sway-dots into it as a new "hybrid" category (cbuild
-# discovers categories by scanning top-level dirs for template.py --
-# confirmed against its real src/runner.py _collect_tmpls, nothing is
-# hardcoded to main/user/cross), and builds both into real .apk files.
+# checkout + build root, drops our own pkg/* packages into it as a new
+# "hybrid" category (cbuild discovers categories by scanning top-level
+# dirs for template.py -- confirmed against its real src/runner.py
+# _collect_tmpls, nothing is hardcoded to main/user/cross), and builds
+# each into a real .apk file.
 set -eu
 
 CPORTS=/home/builder/cports
+# Every package under pkg/ that should be built this way. Add new
+# ones here (and their name to mklive-image.sh's package list) --
+# nothing else needs touching.
+H77_PKGS="h77-dots h77-sway-dots h77-installer"
 
 if [ ! -d "$CPORTS/.git" ]; then
 	echo ">> shallow-cloning chimera-linux/cports (this is a real, fairly"
@@ -16,11 +20,12 @@ if [ ! -d "$CPORTS/.git" ]; then
 	git clone --depth 1 https://github.com/chimera-linux/cports "$CPORTS"
 fi
 
-echo ">> syncing pkg/h77-dots + pkg/h77-sway-dots into cports as 'hybrid/'"
+echo ">> syncing pkg/{$H77_PKGS} into cports as 'hybrid/'"
 mkdir -p "$CPORTS/hybrid"
-rm -rf "$CPORTS/hybrid/h77-dots" "$CPORTS/hybrid/h77-sway-dots"
-cp -a /src/pkg/h77-dots "$CPORTS/hybrid/h77-dots"
-cp -a /src/pkg/h77-sway-dots "$CPORTS/hybrid/h77-sway-dots"
+for p in $H77_PKGS; do
+	rm -rf "$CPORTS/hybrid/$p"
+	cp -a "/src/pkg/$p" "$CPORTS/hybrid/$p"
+done
 
 cd "$CPORTS"
 
@@ -70,11 +75,10 @@ if [ ! -d bldroot ]; then
 	./cbuild bootstrap
 fi
 
-echo ">> building hybrid/h77-dots"
-./cbuild pkg hybrid/h77-dots
-
-echo ">> building hybrid/h77-sway-dots"
-./cbuild pkg hybrid/h77-sway-dots
+for p in $H77_PKGS; do
+	echo ">> building hybrid/$p"
+	./cbuild pkg "hybrid/$p"
+done
 
 echo ">> copying the built repo out to /src/cbuild-out"
 mkdir -p /src/cbuild-out

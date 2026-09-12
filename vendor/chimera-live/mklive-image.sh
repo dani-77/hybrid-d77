@@ -90,7 +90,8 @@ pipewire wireplumber pavucontrol \
 xdg-desktop-portal xdg-desktop-portal-wlr \
 udisks udiskie udiskie-dinit \
 chimera-repo-user \
-h77-dots h77-sway-dots"
+chimera-install-scripts \
+h77-dots h77-sway-dots h77-installer"
         # fuzzel is `user` tier too (fine, we already need -r user for
         # udiskie/greetd/seatd). fonts-hack-ttf is `main`. bash is
         # needed for fuzzel-power-menu (h77-dots), a real
@@ -100,7 +101,11 @@ h77-dots h77-sway-dots"
         # rather than as h77-dots' own depends=["bash"]: cbuild itself
         # can't resolve that (see the template.py comment), so this is
         # the reliable equivalent.
-        ;;
+        #
+        # chimera-install-scripts (`main`) + h77-installer: the start
+        # of the disk-installer side, 2026-09-12 -- a thin wrapper
+        # around the real chimera-installer/chimera-bootstrap, not a
+        # custom installer. See pkg/h77-installer/template.py.
     *)
         echo "unknown image type: $IMAGE"
         echo
