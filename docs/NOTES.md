@@ -862,3 +862,41 @@ functionality (`mkfs`/`mkswap` on a real device) in a way nothing
 else patched into chimera-installer so far has been. Next real
 install test should go through Partition -> Filesystems -> SystemRoot
 on a real or spare disk before trusting this unattended.
+
+## 2026-09-13, later still :: --keep-tite was breaking every screen, not just one
+
+User report: "vemos o que se está a passar... e aqui fica com um
+artefacto na linha de pergunta e não se vê mais nada do que se está a
+passar dando ideia de bloqueio" -- and, critically, when asked whether
+this was specific to the package-install screen: "nem é só nesse
+menu...é em todos". That single follow-up ruled out an apk-output-
+formatting theory and pointed straight at something universal to
+every dialog call.
+
+Root cause, confirmed against dialog's own real upstream source (a
+real `dialog.c` mirror, DragonFlyBSD's vendored copy, plus its
+`CHANGES` file) rather than guessed: upstream chimera-installer's
+`ui_dialog()` -- the wrapper EVERY single menu/prompt in the whole
+script goes through -- hardcoded `--keep-tite` on every call.
+`CHANGES`'s own entry for that flag: "override suppression of
+smcup/rmcup ... which would switch to xterm's alternate screen".
+Normally dialog uses the terminal's alternate-screen buffer (the same
+mechanism vim/htop/less use) -- each new screen draws in a clean
+buffer and the original content is restored when it exits.
+`--keep-tite` disables exactly that, universally, so each new dialog
+box drew directly over whatever the previous one left on the primary
+screen, with nothing ever cleared -- the "artifact" on every screen,
+exactly matching the report.
+
+Fixed by removing `--keep-tite` from `ui_dialog()` and keeping it ONLY
+on `ui_programbox` (now built directly rather than through
+`ui_dialog()`, since that flag isn't parameterizable per-call) --
+there it still serves its real, deliberate purpose: keeping the
+scrolling package-install log in the terminal's own natural
+scrollback instead of an alternate screen that would discard it on
+exit.
+
+Not yet rebuilt into a tested ISO at the time of writing -- queued
+for the next build round, after the user's own real-disk test of
+Partition/Filesystems (already running as a build without this fix,
+since it was mid-flight when this was found).

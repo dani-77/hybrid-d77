@@ -45,6 +45,17 @@
 # confirmed by running `sh -n` with /bin/sh being real dash on the dev
 # host, same POSIX-strict class of shell -- fixed to a real temp file.
 #
+# Same day, user report ("não é só nesse menu... é em todos"): EVERY
+# screen in the installer, not just package-install progress, showed
+# visual artifacts making it look frozen. Root cause, confirmed
+# against dialog's own real upstream source/CHANGES: ui_dialog(), the
+# universal wrapper every single menu goes through, hardcoded
+# --keep-tite on every call -- which disables dialog's normal
+# alternate-screen redraw (the same mechanism vim/htop/less use), so
+# nothing ever got cleared between screens. Removed from ui_dialog(),
+# kept only on ui_programbox (its real, deliberate purpose there: keep
+# the install log in the terminal's own scrollback).
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --

@@ -285,9 +285,26 @@ DLG_RESET="\Zn"
 DLG_MENU_LABEL="\n${DLG_BOLD}The Enter key selects options. The Up/Down keys switch between\n
 options, the Tab or Left/Right key switches between buttons.${DLG_RESET}"
 
+# hybrid-d77 patch: --keep-tite REMOVED from the universal ui_dialog()
+# wrapper -- confirmed against dialog's own real upstream source/CHANGES
+# (checked via a real dialog.c mirror, not guessed) that --keep-tite's
+# whole purpose is to "override suppression of smcup/rmcup ... which
+# would switch to xterm's alternate screen". With it set on literally
+# every dialog call (as upstream chimera-installer had it), dialog
+# never switches to the terminal's alternate screen buffer at all --
+# each new screen draws directly on top of whatever the previous one
+# left behind instead of cleanly clearing and restoring, and NOTHING
+# gets cleaned up between screens. User-reported symptom, confirmed
+# real and NOT specific to any one menu ("não é só nesse menu... é em
+# todos"): visual artifacts/leftover content on every single screen,
+# looking like the installer had frozen. Left in place ONLY for
+# ui_programbox below, where it has a real, deliberate purpose
+# (keeping the scrolling package-install log in the terminal's own
+# natural scrollback instead of an alternate screen that discards it
+# on exit) -- everything else now redraws cleanly.
 ui_dialog() {
     rm -f "$ANSWER_FILE"
-    dialog --colors --no-shadow --keep-tite \
+    dialog --colors --no-shadow \
         --backtitle "${DLG_BOLD}${DLG_WHITE}Chimera Linux installer${DLG_RESET}" \
         --cancel-label "Back" --aspect 20 "$@" 2>"$ANSWER_FILE"
     return $?
@@ -304,7 +321,11 @@ ui_infobox() {
 ui_programbox() {
     local titl="$1"
     shift
-    stdbuf -oL -- "$@" 2>&1 | ui_dialog --title "$titl" --programbox 24 80
+    rm -f "$ANSWER_FILE"
+    stdbuf -oL -- "$@" 2>&1 | dialog --colors --no-shadow --keep-tite \
+        --backtitle "${DLG_BOLD}${DLG_WHITE}Chimera Linux installer${DLG_RESET}" \
+        --cancel-label "Back" --aspect 20 --title "$titl" --programbox 24 80 \
+        2>"$ANSWER_FILE"
 }
 
 # command line options
