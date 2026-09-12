@@ -658,3 +658,26 @@ accident.
 Not yet rebuilt/tested against a real boot at the time of writing --
 this is a large batch, next step is a full rebuild + real-hardware
 check.
+
+### Noted for later: repo visibility, and a more integrated groups/services flow
+
+- **Visibility**: `h77-pkgs`-fetching via `gh release download` (both
+  `iso/fetch-pkgs.sh` and the CI workflow itself) works fine on a
+  PRIVATE repo, since both authenticate (the user's own `gh` login, or
+  the Action's own `GITHUB_TOKEN`). It would need to go PUBLIC only
+  for consumers that can't authenticate -- someone else's machine
+  running `fetch-pkgs.sh` without `gh` logged in, or a network-source
+  `chimera-installer` install doing a plain `apk add` against a real
+  HTTPS repo URL (closing the network-source gap noted earlier). Given
+  this project's own stated goal (reach people beyond personal use,
+  unlike the rest of the d77 family), going public makes sense
+  eventually -- user's own call on timing, not done yet.
+- **Groups/services, a more integrated version**: `h77-installer`'s
+  current post-install fix-up (`files/post-install`) is a bolt-on
+  script that runs after `chimera-installer` itself exits. A more
+  integrated version, closer to what `void-installer` actually does
+  (real interactive Groups/Services checklists as part of the
+  installer's own menu flow, not a fixed script run afterward), would
+  mean patching `chimera-installer` directly -- the same kind of patch
+  already done for `9990-chimera-user.sh` on the live side. Not
+  started; explicitly deferred.
