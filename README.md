@@ -1,56 +1,80 @@
-# hybrid-d77
+<p align="center">
+  <img src="assets/logo.png" width="128" alt="hybrid-d77 logo">
+</p>
 
-The d77 desktop (Sway + [yambar](https://codeberg.org/dnkl/yambar)) on
-[Chimera Linux](https://chimera-linux.org/) -- BSD userland (FreeBSD's),
-Linux kernel, `apk` package manager, `dinit` init. The "hybrid" in the
-name is that: a genuine hybrid of the BSD and Linux worlds, not just a
-marketing word.
+<h1 align="center">hybrid-d77</h1>
 
-yambar over waybar is a deliberate choice, not because waybar is
-unavailable -- it exists in cports too (`user/waybar`). yambar was
-picked on its own merits.
+<p align="center">Chimera Linux · <b>Sway</b> + yambar · <b>dinit</b> — live ISO (chimera-live).</p>
 
-Named deliberately without "chimera" in it -- unlike the rest of the d77
-family (`d77void`, `d77arch`, ...), this one is meant to reach people
-outside personal/internal use, and staying clear of the base distro's own
-name in the product name avoids a repeat of `d77void` being permanently
-tied to Void's name.
+---
 
-**Status: live ISO pipeline works end to end.** An official, unmodified
-upstream GNOME ISO and a sway-variant test ISO (see below) have both been
-built and booted from a USB. The remaining piece is building `h77-dots`/
-`h77-sway-dots` as real `.apk` packages via a `cports`/`cbuild`
-toolchain bootstrap, so a sway ISO can ship the real d77 skel instead of
-upstream defaults. See `docs/NOTES.md` for the full field notes, and the
-Layout section below for what's here.
+## Why this shape
+
+- [Chimera Linux](https://chimera-linux.org/) pairs a Linux kernel with a
+  BSD userland (FreeBSD's `chimerautils`) and `apk` (the same package
+  *format* as Alpine, a different, incompatible `apk-tools` build and
+  build system, **cports**/`cbuild`). The "hybrid" in the name is that: a
+  genuine hybrid of the BSD and Linux worlds, not just a marketing word.
+- Named deliberately **without** "chimera" in it — unlike the rest of the
+  d77 family (`d77void`, `d77arch`, ...), this one is meant to reach
+  people outside personal/internal use, and staying clear of the base
+  distro's own name avoids a repeat of `d77void` staying permanently tied
+  to Void's name (also a real trademark-policy concern, not just taste).
+- Init is **dinit**, not OpenRC/systemd/s6 like the rest of the family —
+  per-package dinit service files ship as `<pkg>-dinit` subpackages
+  (`greetd-dinit`, `udiskie-dinit`, `networkmanager-dinit`, ...).
+- **yambar**, not waybar — a deliberate choice, not a limitation: waybar
+  exists in cports too (`user/waybar`, same repo tier as udiskie/greetd).
+- No greeter/display-manager, even though `greetd` is packaged — Void's
+  and Chimera's own convention: a plain `getty` `login:` prompt, with
+  `/etc/motd` documenting the credentials, straight into Sway via
+  `.profile` once logged in. `anon`/`chimera` + `root`/`chimera` are left
+  as Chimera's own default, same pattern as Void's `anon`/`voidlinux` —
+  no custom user-creation logic.
 
 ## Layout
 
-- `vendor/chimera-live/` -- vendored fork of
-  [chimera-linux/chimera-live](https://github.com/chimera-linux/chimera-live)
-  (image-creation tooling, the `mklive.sh`/`mklive-image.sh` equivalent
-  of Alpine's `mkimage.sh`). GPLv3 as a whole (see its own `COPYING.md`).
-  Patched with a new `sway` case in `mklive-image.sh` (every package name
-  individually verified against the real cports repo).
-- `pkg/h77-dots/` -- general app dotfiles (foot, alacritty, kitty,
-  qt5ct/qt6ct, Kvantum), `50-udisks.rules`, `motd`, and the wallpaper --
-  as a [cports](https://github.com/chimera-linux/cports) package
-  (`template.py`), installed to `/etc/skel`.
-- `pkg/h77-sway-dots/` -- sway/swaylock/swaync/yambar dotfiles, also
-  installed to `/etc/skel`, `depends = ["h77-dots"]`.
-- `iso/mklive-d77.sh` -- wrapper around `vendor/chimera-live/mklive.sh`,
-  builds the `sway` variant with both the `main` and `user` cports repos
-  enabled (the latter needed for udiskie/greetd/libseat-seatd).
-- `container/` -- Containerfile + entrypoint for building an ISO via
-  `sudo podman`, FROM Chimera's own official container image (Alpine's
-  own apk-tools can't read Chimera's package format at all).
-- `docs/NOTES.md` -- field notes, read before touching the build.
+```
+vendor/chimera-live/          vendored fork of chimera-linux/chimera-live
+                               (mklive.sh/mklive-image.sh, the mkimage.sh
+                               equivalent) -- GPLv3 as a whole, see its own
+                               COPYING.md. Patched with a "sway" case in
+                               mklive-image.sh, every package name verified
+                               against the real repo (main + user tiers).
+pkg/h77-dots/                  general app dotfiles (/etc/skel): foot,
+                               alacritty, kitty, qt5ct/qt6ct, Kvantum,
+                               the wallpaper, 50-udisks.rules, motd
+pkg/h77-sway-dots/              sway/swaylock/swaync/yambar dotfiles
+                               (/etc/skel), depends = ["h77-dots"]
+iso/mklive-d77.sh              wrapper around vendor/chimera-live/mklive.sh,
+                               builds the "sway" variant (main + user repos)
+container/                     Containerfile + entrypoint -- builds an ISO
+                               via sudo podman, FROM Chimera's own official
+                               container image (Alpine's apk-tools can't
+                               read Chimera's package format at all)
+docs/NOTES.md                  field notes -- read before touching the build
+```
+
+## Status
+
+The live ISO pipeline works end to end: an official, unmodified upstream
+GNOME ISO and a sway-variant test ISO have both been built (via
+`container/`) and booted from USB. What's left is building `h77-dots`/
+`h77-sway-dots` as real `.apk` packages through a `cports`/`cbuild`
+toolchain bootstrap, so a sway ISO ships the real d77 skel instead of
+upstream defaults — see `docs/NOTES.md` for the full field notes and
+current blockers.
+
+The disk-installer side is explicitly **not** in scope yet — the goal
+right now is a consistent, working **live** ISO first.
 
 ## Reference / inspiration (not vendored, just studied)
 
-- [chimera-install-scripts](https://github.com/chimera-linux/chimera-install-scripts) --
+- [chimera-install-scripts](https://github.com/chimera-linux/chimera-install-scripts) —
   `chimera-installer`/`chimera-chroot`, for whenever the installer side
-  of this gets built (explicitly deferred for now).
-- [cports](https://github.com/chimera-linux/cports) -- the package
-  collection itself; also where every package name referenced here has
-  been verified against (both the `main` and `user` repo tiers).
+  gets built.
+- [cports](https://github.com/chimera-linux/cports) — the package
+  collection itself; every package name referenced here has been
+  verified against it (both the `main` and `user` repo tiers).
+
+## Not affiliated with the Chimera Linux project.
