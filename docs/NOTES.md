@@ -357,3 +357,28 @@ therefore deliberately does NOT set `PACKAGES` at all.
   and the package resolving is as far as this got tonight.
 - `SystemRoot`/partitioning remains fully interactive, by design --
   nothing here attempts to guess a target machine's disk layout.
+
+### Noted for later: publish h77-dots/h77-sway-dots/h77-installer as a GitHub Release
+
+User's own idea, same pattern already proven in `d77crux-live` for
+`d77crux-kernel` -- confirmed by reading `d77crux-live/scripts/
+fetch-kernel.sh`: a GitHub Actions workflow in the `d77crux` repo
+builds the kernel and publishes it as a release asset (`.pkg.tar.xz` +
+`.sha256`); the remaster's own `fetch-kernel.sh` does `gh release
+download` before assembling the ISO, instead of compiling locally
+every time.
+
+Applied here, this would solve two things at once:
+- Skip re-running `container/cbuild.Containerfile` (bootstrap + build,
+  ~2-3 min) every session -- a `fetch-pkgs.sh` downloads the latest
+  release's `.apk`s + `APKINDEX.tar.gz` into `cbuild-out/hybrid/`
+  before `iso/mklive-d77.sh` runs.
+- Give network-source `chimera-installer` installs a real repo to
+  reach for `h77-dots`/`h77-sway-dots`/`h77-installer` (currently only
+  local-source installs get them, via `chimera-bootstrap -l`'s tar
+  copy of the live's own rootfs) -- if the release's files are also
+  served from a stable URL (e.g. GitHub Pages), that closes the
+  network-source gap noted above.
+
+Not started -- explicitly parked ("Anotado para já") while finishing
+the current ISO build/test.
