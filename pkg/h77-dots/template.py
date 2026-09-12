@@ -12,7 +12,19 @@
 #     foot is the terminal), shipping their config would just be dead
 #     weight. gtk-3.0/4.0 settings.ini: gtk-theme-name Arc-Dark ->
 #     Breeze-Dark (arc-theme doesn't exist either, breeze-gtk does,
-#     under KDE's own standard Breeze/Breeze-Dark naming).
+#     under KDE's own standard Breeze/Breeze-Dark naming, user-confirmed);
+#     gtk-cursor-theme-name (Void's own "whiteglass") dropped entirely,
+#     confirmed genuinely absent from cports (no cursor-theme package
+#     at all). Kvantum/kvantum.kvconfig's theme= was "KvArcDark" -- a
+#     real bug INHERITED from d77void's own source (their own
+#     Kvantum/ dir only ever shipped catppuccin-mocha-blue too, same
+#     as here, "KvArcDark" never existed on either side) -- fixed to
+#     theme=catppuccin-mocha-blue, the only Kvantum theme this project
+#     actually ships. qt6ct.conf's color_scheme_path still points at
+#     the stock airy.conf rather than the shipped catppuccin-mocha-blue
+#     colors file -- left as is, matches d77void's own real config
+#     exactly (not a mismatch introduced here), not touched unless
+#     asked.
 #   - foot: ~/d77devuan/pkg/d77-sway-skel/skel/.config/foot (font
 #     switched to Hack, matching fuzzel.ini's own font=hack below)
 #   - fuzzel: ~/d77void/common/fuzzel_c/fuzzel/fuzzel.ini (terminal=

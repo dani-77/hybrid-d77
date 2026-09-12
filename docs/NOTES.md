@@ -737,3 +737,33 @@ checklists behave correctly on paper, verified against real
 elsewhere in the same file, but never actually clicked through) --
 next real disk install should confirm both checklists render and
 apply correctly.
+
+## 2026-09-13 :: post-milestone theming cleanup, vim -> neovim
+
+User confirmed the patched installer ISO worked end to end, then
+asked for a few small follow-ups:
+
+- **Kvantum**: `kvantum.kvconfig`'s `theme=` was `KvArcDark` -- a real
+  bug, but INHERITED from d77void's own source, not introduced here
+  (checked: their own `Kvantum/` dir only ever shipped
+  `catppuccin-mocha-blue` too, `KvArcDark` never existed on either
+  side). Fixed to `theme=catppuccin-mocha-blue`, the only theme this
+  project actually ships.
+- **gtk-cursor-theme-name**: was `whiteglass` (Void's own choice) --
+  confirmed genuinely absent from cports (no cursor-theme package at
+  all, `main` or `user`), dropped entirely from `gtk-3.0`/`gtk-4.0`
+  rather than left pointing at nothing.
+- **gtk-icon-theme-name** (`Papirus-Dark`) and **gtk-theme-name**
+  (`Breeze-Dark`, already fixed earlier) both double-checked against
+  the real upstream sources cports builds from (papirus-icon-theme's
+  own `Makefile`/`install.sh`: `EXTRA_THEMES="Papirus-Dark
+  Papirus-Light"` by default; user directly confirmed Breeze-Dark) --
+  both correct as shipped.
+- **qt6ct.conf's `color_scheme_path`** still points at the stock
+  `airy.conf` rather than the shipped `catppuccin-mocha-blue.conf` --
+  checked, this exactly matches d77void's own real config (not a
+  mismatch introduced here), left alone since it wasn't what was
+  asked and isn't a new bug.
+- **vim -> neovim**: real package, `user` tier, user's own request.
+
+Not yet rebuilt/tested against a real boot at the time of writing.

@@ -97,7 +97,7 @@ thunar file-roller \
 acpi bash-completion bc-gh cmus cups system-config-printer \
 fastfetch feh gettext htop inxi imagemagick mousepad mpv \
 musl-locales nano smartmontools transmission ufw unzip usbutils \
-vim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
+neovim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
 chimera-repo-user \
 dialog \
 h77-dots h77-sway-dots h77-installer h77-install-scripts"
@@ -156,6 +156,12 @@ h77-dots h77-sway-dots h77-installer h77-install-scripts"
         #     add; pipewire's own pulse compat covers pulseaudio-utils).
         #   - wget -> wget2 (the real package name); ImageMagick ->
         #     imagemagick (lowercase, case-sensitive filesystem).
+        #
+        # 2026-09-13: vim -> neovim (`user` tier, confirmed real,
+        # user's own request), and a theming pass fixed two real
+        # bugs found while double-checking gtk-2.0/3.0/4.0 -- see
+        # pkg/h77-dots/template.py's own header comment for the
+        # Kvantum "KvArcDark" and gtk-cursor-theme-name fixes.
         ;;
     *)
         echo "unknown image type: $IMAGE"
