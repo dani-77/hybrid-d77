@@ -12,6 +12,17 @@ name: Build hybrid-d77 packages
 # confirmed the hard way locally, see docs/NOTES.md) -- GitHub-hosted
 # runners are full VMs, so a --privileged container is allowed here the
 # same as it is locally.
+#
+# --privileged on the container alone is NOT enough here, though,
+# confirmed the hard way in CI (same "Can't mount proc on
+# /newroot/proc"-class bwrap failure as the original local one, just
+# from a different cause): ubuntu-latest runners are Ubuntu 24.04,
+# which restricts unprivileged user namespace creation via an
+# AppArmor policy at the HOST kernel level (`kernel.
+# apparmor_restrict_unprivileged_userns`) -- a property of the runner
+# VM itself, not something a container's own --privileged flag can
+# override from the inside. Fixed by disabling that sysctl on the
+# runner (not in the container) before building.
 
 on:
   workflow_dispatch: {}
@@ -35,6 +46,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Allow unprivileged user namespaces (bwrap needs this)
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
       - name: Build the cbuild container image
         run: docker build -t hybrid-d77-cbuild -f container/cbuild.Containerfile .
