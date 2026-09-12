@@ -358,7 +358,20 @@ therefore deliberately does NOT set `PACKAGES` at all.
 - `SystemRoot`/partitioning remains fully interactive, by design --
   nothing here attempts to guess a target machine's disk layout.
 
-### Noted for later: publish h77-dots/h77-sway-dots/h77-installer as a GitHub Release
+### Implemented later the same night: publish h77-dots/h77-sway-dots/h77-installer as a GitHub Release
+
+Done: `.github/workflows/build-h77-pkgs.yml` (mirrors d77crux-live's
+own `build-kernel.yml` almost line for line -- checkout, build the
+container, run it `--privileged` since GitHub-hosted runners are full
+VMs and allow that, publish to a fixed `h77-pkgs` release tag,
+deleting+recreating it if it already exists, same as d77crux-kernel
+does per-version) + `iso/fetch-pkgs.sh` (mirrors `scripts/
+fetch-kernel.sh`: `gh release download`, verify `SHA256SUMS`, populate
+exactly what `iso/mklive-d77.sh` already expects --
+`cbuild-out/hybrid/x86_64/` + `cbuild-out/*.rsa.pub`). Triggers on
+`workflow_dispatch` or a push touching `pkg/**`.
+
+### Original note (superseded by the above, kept for context)
 
 User's own idea, same pattern already proven in `d77crux-live` for
 `d77crux-kernel` -- confirmed by reading `d77crux-live/scripts/

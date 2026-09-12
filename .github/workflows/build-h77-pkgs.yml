@@ -1,0 +1,66 @@
+name: Build hybrid-d77 packages
+
+# Builds h77-dots/h77-sway-dots/h77-installer via container/cbuild.Containerfile
+# (real cports/cbuild, not guessed) and publishes them as a GitHub Release --
+# same pattern as d77crux-live's own d77crux-kernel workflow
+# (github.com/dani-77/d77crux, .github/workflows/build-kernel.yml): build once
+# in CI, pin/fetch the release asset locally instead of rebuilding from
+# source every time. iso/fetch-pkgs.sh is the consumer side.
+#
+# The build itself needs --privileged (bwrap's own nested mount() calls
+# fail without it under a container's default capability/seccomp set --
+# confirmed the hard way locally, see docs/NOTES.md) -- GitHub-hosted
+# runners are full VMs, so a --privileged container is allowed here the
+# same as it is locally.
+
+on:
+  workflow_dispatch: {}
+  push:
+    paths:
+      - "pkg/**"
+      - "container/cbuild.Containerfile"
+      - "container/cbuild-entrypoint.sh"
+      - ".github/workflows/build-h77-pkgs.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-h77-pkgs-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build the cbuild container image
+        run: docker build -t hybrid-d77-cbuild -f container/cbuild.Containerfile .
+
+      - name: Build h77-dots / h77-sway-dots / h77-installer
+        run: |
+          docker run --rm --privileged --security-opt label=disable \
+            -v "$PWD:/src" -w /src hybrid-d77-cbuild
+
+      - name: Checksum
+        run: |
+          cd cbuild-out
+          sha256sum *.pub hybrid/x86_64/*.apk hybrid/x86_64/APKINDEX.tar.gz \
+            > SHA256SUMS
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="h77-pkgs"
+          gh release view "$tag" >/dev/null 2>&1 \
+            && gh release delete "$tag" --yes --cleanup-tag
+          gh release create "$tag" \
+            --title "hybrid-d77 packages (h77-dots, h77-sway-dots, h77-installer)" \
+            --notes "Built by ${{ github.workflow }} from ${{ github.sha }}. Consumed by iso/fetch-pkgs.sh, not meant to be installed by hand." \
+            cbuild-out/*.pub \
+            cbuild-out/hybrid/x86_64/*.apk \
+            cbuild-out/hybrid/x86_64/APKINDEX.tar.gz \
+            cbuild-out/SHA256SUMS
