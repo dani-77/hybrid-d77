@@ -32,6 +32,11 @@
 # `id < 0` condition is the module's own convention for "total across
 # all cores" (confirmed against yambar-modules-cpu.5.scd); `mem`'s
 # `percent_used` is a native tag, no computation needed.
+#
+# Same evening, follow-up: `network` brought back too (cpu/mem stay),
+# but wireless-only -- shows `{ssid}` when actually connected over
+# wifi, nothing for ethernet/down/no-SSID, dropping the generic
+# `{name}: {ipv4}` and "no net" branches the original block had.
 
 pkgname = "h77-sway-dots"
 pkgver = "0.1.0"

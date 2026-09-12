@@ -71,6 +71,22 @@ bar:
               percent_used >= 90:
                 string: {text: "ram {percent_used}%", foreground: f38ba8ff}
 
+    # Wireless-only, as it was before cpu/mem were added: shows the
+    # SSID when actually connected over wifi, nothing otherwise (no
+    # ethernet/{ipv4} line, no "no net" down-state -- user's own call,
+    # 2026-09-12).
+    - network:
+        content:
+          map:
+            default: {empty: {}}
+            conditions:
+              state == up:
+                map:
+                  default: {empty: {}}
+                  conditions:
+                    ssid != "":
+                      string: {text: "{ssid}", foreground: a6e3a1ff}
+
     - alsa:
         card: default
         mixer: Master
