@@ -1,0 +1,143 @@
+#!/bin/sh
+#
+# Chimera Linux chroot script
+#
+# Copyright 2023-2024 q66 <q66@chimera-linux.org>
+#
+# License: BSD-2-Clause
+#
+
+readonly PROGNAME=$(basename "$0")
+
+MOUNTED_PSEUDO=
+ROOT_DIR=
+RESOLV_SAVED=
+RESOLV_REPLACED=
+
+do_trymount() {
+    if mountpoint -q "${ROOT_DIR}/$1" > /dev/null 2>&1; then
+        return 0
+    fi
+    mount --rbind "/$1" "${ROOT_DIR}/$1" || die "Failed to mount ${1}fs"
+    mount --make-rslave "${ROOT_DIR}/$1" || die "Failed to make ${1} rslave"
+    MOUNTED_PSEUDO="${MOUNTED_PSEUDO} $1"
+}
+
+mount_pseudo() {
+    do_trymount dev
+    do_trymount proc
+    do_trymount sys
+    do_trymount tmp
+}
+
+umount_pseudo() {
+    sync
+    for mnt in ${MOUNTED_PSEUDO}; do
+        [ -n "$mnt" ] || continue
+        umount -R -f "${ROOT_DIR}/$mnt" > /dev/null 2>&1
+    done
+}
+
+replace_resolv() {
+    # do not touch if target /etc is missing or if we do not have resolv.conf
+    [ -d "${ROOT_DIR}/etc" -a -f /etc/resolv.conf ] || return 0
+    RESOLV_REPLACED="${ROOT_DIR}/etc/resolv.conf"
+    # save the existing one if needed
+    if [ -e "$RESOLV_REPLACED" -o -L "$RESOLV_REPLACED" ]; then
+        RESOLV_SAVED="${ROOT_DIR}/etc/resolv.conf.chimera-chroot.$$"
+        # make space, this should not do anything
+        rm -f "$RESOLV_SAVED" > /dev/null 2>&1
+        # try moving, on failure unset saved
+        if ! mv "$RESOLV_REPLACED" "$RESOLV_SAVED" > /dev/null 2>&1; then
+            RESOLV_SAVED=
+            RESOLV_REPLACED=
+            return 0
+        fi
+    fi
+    # now replace it
+    cp /etc/resolv.conf "$RESOLV_REPLACED" > /dev/null 2>&1
+}
+
+restore_resolv() {
+    # restore best we can
+    [ -n "$RESOLV_REPLACED" ] && \
+        rm -f "$RESOLV_REPLACED" > /dev/null 2>&1
+    [ -n "$RESOLV_SAVED" ] && \
+        mv "$RESOLV_SAVED" "$RESOLV_REPLACED" > /dev/null 2>&1
+    RESOLV_SAVED=
+    RESOLV_REPLACED=
+}
+
+msg() {
+    printf "\033[1m$@\n\033[m"
+}
+
+error_sig() {
+    restore_resolv
+    umount_pseudo
+    [ -n "$REPOSF" ] && rm -f "$REPOSF"
+    [ -n "$EREPOSF" ] && rm -f "$EREPOSF"
+    exit ${1:=0}
+}
+
+trap 'error_sig $? $LINENO' INT TERM 0
+
+die() {
+    echo "ERROR: $@"
+    error_sig 1 $LINENO
+}
+
+usage() {
+    cat << EOF
+Usage: $PROGNAME [opts] root [command] [args]...
+
+This script chroots into the given root, much like the actual chroot
+command. However, it also ensures that pseudo-filesystems are mounted
+and other things necessary for remote installation manipulation.
+
+Options:
+  -r  Do not touch resolv.conf.
+  -h  Print this message.
+EOF
+    exit ${1:=1}
+}
+
+# ensure we run as root
+if [ "$(id -u)" != "0" ]; then
+    die "Must run this as root."
+fi
+
+REPLACE_RESOLV=1
+
+while getopts "rh" opt; do
+    case "$opt" in
+        r) REPLACE_RESOLV=0 ;;
+        h) usage 0 ;;
+        *) usage 1 ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+
+ROOT_DIR="$1"
+shift
+
+# ensure the target exists
+[ -d "$ROOT_DIR" ] || die "root directory does not exist"
+
+mount_pseudo
+
+if [ "$REPLACE_RESOLV" -eq 1 ]; then
+    replace_resolv
+fi
+
+if [ -f "${ROOT_DIR}/etc/chimera-release" ]; then
+    export SHELL=/bin/sh
+fi
+PS1="(chroot) $PS1" chroot "$ROOT_DIR" "$@"
+RC=$?
+
+restore_resolv
+umount_pseudo
+
+exit $RC

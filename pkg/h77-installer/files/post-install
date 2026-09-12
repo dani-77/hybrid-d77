@@ -1,7 +1,15 @@
 #!/bin/sh
-# hybrid-d77 :: post-install fix-up for a target chimera-installer just
-# set up. Two things chimera-installer itself doesn't handle (confirmed
-# against its real source, src at chimera-linux/chimera-install-scripts):
+# hybrid-d77 :: MANUAL FALLBACK -- not run automatically anymore. The
+# two gaps below are now handled by h77-install-scripts' own patched
+# chimera-installer directly (a real interactive checklist for both,
+# shown during install), so running this unconditionally afterward
+# would silently override an explicit uncheck a user made in those
+# dialogs. Kept as a script for edge cases the interactive flow
+# doesn't cover: a network-source install, or reapplying by hand.
+#
+# post-install fix-up for a target chimera-installer just set up. Two
+# things upstream chimera-installer itself doesn't handle on its own
+# (confirmed against its real source, chimera-linux/chimera-install-scripts):
 #
 #   1. Extra user groups. chimera-installer only ever runs
 #      `usermod -a -G wheel` on the user it creates -- nothing for

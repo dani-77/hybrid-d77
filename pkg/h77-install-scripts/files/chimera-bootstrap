@@ -1,0 +1,288 @@
+#!/bin/sh
+#
+# Chimera Linux bootstrap script
+#
+# Copyright 2023-2024 q66 <q66@chimera-linux.org>
+#
+# License: BSD-2-Clause
+#
+
+readonly PROGNAME=$(basename "$0")
+
+MOUNTED_PSEUDO=
+ROOT_DIR=
+EREPOSF=
+REPOSF=
+
+do_trymount() {
+    if mountpoint -q "${ROOT_DIR}/$1" > /dev/null 2>&1; then
+        return 0
+    fi
+    mkdir -m "$2" -p "${ROOT_DIR}/$1"
+    mount --rbind "/$1" "${ROOT_DIR}/$1" || die "Failed to mount ${1}fs"
+    mount --make-rslave "${ROOT_DIR}/$1" || die "Failed to make ${1} rslave"
+    MOUNTED_PSEUDO="${MOUNTED_PSEUDO} $1"
+}
+
+mount_pseudo() {
+    do_trymount dev 755
+    do_trymount proc 555
+    do_trymount sys 555
+    do_trymount tmp 1777
+}
+
+umount_pseudo() {
+    sync
+    for mnt in ${MOUNTED_PSEUDO}; do
+        [ -n "$mnt" ] || continue
+        umount -R -f "${ROOT_DIR}/$mnt" > /dev/null 2>&1
+    done
+}
+
+msg() {
+    printf "\033[1m$@\n\033[m"
+}
+
+error_sig() {
+    umount_pseudo
+    [ -n "$REPOSF" ] && rm -f "$REPOSF"
+    [ -n "$EREPOSF" ] && rm -f "$EREPOSF"
+    exit ${1:=0}
+}
+
+trap 'error_sig $? $LINENO' INT TERM 0
+
+die() {
+    echo "ERROR: $@"
+    error_sig 1 $LINENO
+}
+
+usage() {
+    cat << EOF
+Usage: $PROGNAME [opts] root [packages]...
+
+By default, a network installation is performed. If no packages are given,
+the 'base-full' package is used. If passing a list of packages, a base
+package should typically be given for network installations.
+
+For local installations, a source root is used and the packages optionally
+passed on command line are installed on top. By default, it is assumed
+that local installations are performed in live sessions and that there
+is a mounted squashfs in the default location. This may be overridden.
+
+In any case, the root directory must exist and be writable.
+
+Options:
+  -l       Perform a local installation.
+  -L PATH  Override the local installation source root.
+  -a PATH  Use a different apk binary.
+  -C DIR   Cache the packages into DIR (no spaces in absolute path).
+  -i       Run apk in interactive mode.
+  -I       Ignore system repositories.
+  -r REPO  Specify additional package repository.
+  -k DIR   Override apk keys directory.
+  -m URL   Specify a mirror URL to use for the bootstrap.
+  -f       Force installation even with non-empty target root.
+  -u       Allow untrusted packages.
+  -h       Print this message.
+EOF
+    exit ${1:=1}
+}
+
+INSTALL_LOCAL=0
+INSTALL_LOCAL_PATH=
+INSTALL_APK="apk"
+INSTALL_FORCE=0
+INSTALL_IGNORE_REPOS=0
+INSTALL_KEYS_DIR="/usr/lib/apk/keys"
+INSTALL_APK_ARGS="--no-interactive"
+INSTALL_MIRROR=
+CACHE_DIR=
+
+# ensure we run as root
+if [ "$(id -u)" != "0" ]; then
+    die "Must run this as root."
+fi
+
+while getopts "C:lL:a:iIr:k:m:fuh" opt; do
+    case "$opt" in
+        C) CACHE_DIR="$OPTARG" ;;
+        l) INSTALL_LOCAL=1 ;;
+        L) INSTALL_LOCAL_PATH="$OPTARG" ;;
+        a) INSTALL_APK="$OPTARG" ;;
+        i) INSTALL_APK_ARGS="$INSTALL_APK_ARGS --interactive" ;;
+        I) INSTALL_IGNORE_REPOS=1 ;;
+        r)
+            if [ -z "$EREPOSF" ]; then
+                EREPOSF=$(mktemp)
+                [ $? -eq 0 ] || die "failed to set up extra repositories file"
+            fi
+            echo "$OPTARG" >> "$EREPOSF"
+            ;;
+        k) INSTALL_KEYS_DIR="$OPTARG" ;;
+        m) INSTALL_MIRROR="$OPTARG" ;;
+        f) INSTALL_FORCE=1 ;;
+        u) INSTALL_APK_ARGS="$INSTALL_APK_ARGS --allow-untrusted" ;;
+        h) usage 0 ;;
+        *) usage 1 ;;
+    esac
+done
+
+if [ -n "$INSTALL_KEYS_DIR" -a ! -d "$INSTALL_KEYS_DIR" ]; then
+    die "keys directory does not exist"
+fi
+
+shift $((OPTIND - 1))
+
+if ! command -v mountpoint > /dev/null 2>&1; then
+    die "mountpoint must be present"
+fi
+
+if ! command -v "$INSTALL_APK" > /dev/null 2>&1; then
+    die "apk must be present"
+fi
+
+ROOT_DIR="$1"
+shift
+
+if [ $# -eq 0 -a "$INSTALL_LOCAL" -eq 0 ]; then
+    # set a default for network installations
+    set -- "base-full"
+fi
+
+# determine the default local install path
+if [ "$INSTALL_LOCAL" -eq 1 -a -z "$INSTALL_LOCAL_PATH" ]; then
+    for mdir in /run/live/rootfs/filesystem.*; do
+        if [ -d "$mdir" ]; then
+            INSTALL_LOCAL_PATH="$mdir"
+            break
+        fi
+    done
+fi
+
+if [ "$INSTALL_LOCAL" -eq 1 -a ! -d "$INSTALL_LOCAL_PATH" ]; then
+    die "local install but no source root to install from"
+fi
+
+# ensure the target exists
+[ -d "$ROOT_DIR" ] || die "root directory does not exist"
+
+# ensure the target is writable
+if ! touch "${ROOT_DIR}/.write-test" > /dev/null 2>&1; then
+    die "root directory is not writable"
+else
+    rm -f "${ROOT_DIR}/.write-test"
+fi
+
+# ensure it's empty (there should be no output at all from the find)
+#
+# we might want to handle lost+found specially but then installs are
+# expected to be done onto a clean filesystem, and having non-empty
+# lost+found indicates that the filesystem is probably not clean
+#
+# directories are okay because it is expected that e.g. if somebody
+# has a separate /boot, they will want to pre-mount it before running
+# the chimera-bootstrap command
+#
+if [ "$INSTALL_FORCE" -eq 0 ]; then
+    for x in $(find "${ROOT_DIR}" '!' -type d -print -quit); do
+        die "root directory is non-empty"
+    done
+fi
+
+make_reposf() {
+    [ -n "$REPOSF" ] && return 0
+
+    if [ -n "$CACHE_DIR" ]; then
+        mkdir -p "$CACHE_DIR"
+        CACHE_DIR=$(realpath "$CACHE_DIR")
+        INSTALL_APK_ARGS="$INSTALL_APK_ARGS --cache-packages --cache-dir $CACHE_DIR"
+    fi
+
+    REPOSF=$(mktemp)
+    [ $? -eq 0 ] || die "failed to generate a repositories file"
+
+    if [ -n "$INSTALL_MIRROR" ]; then
+        echo "set CHIMERA_REPO_URL=$INSTALL_MIRROR" > "$REPOSF"
+    fi
+
+    if [ "$INSTALL_IGNORE_REPOS" -eq 1 ]; then
+        if [ -n "$EREPOSF" ]; then
+            cat "$EREPOSF" >> "$REPOSF"
+        fi
+        return 0
+    fi
+
+    if [ -f /etc/apk/repositories ]; then
+        cat /etc/apk/repositories >> "$REPOSF"
+    fi
+
+    tmprepos=$(mktemp -d) || die "failed to create a temporary repo dir"
+
+    for f in /usr/lib/apk/repositories.d/*; do
+        [ -f "$f" ] || continue
+        cp "$f" "$tmprepos"
+    done
+
+    for f in /etc/apk/repositories.d/*; do
+        [ -f "$f" ] || continue
+        cp "$f" "$tmprepos"
+    done
+
+    for f in "$tmprepos"/*; do
+        [ -f "$f" ] || continue
+        cat "$f" >> "$REPOSF"
+    done
+
+    if [ -n "$EREPOSF" ]; then
+        cat "$EREPOSF" >> "$REPOSF"
+    fi
+
+    rm -rf "$tmprepos"
+}
+
+if [ "$INSTALL_LOCAL" -eq 1 ]; then
+    msg "Copying system to ${ROOT_DIR}..."
+    # copy over the source system as closely as possible
+    tar -cf - -C "$INSTALL_LOCAL_PATH" . | tar -xpf - -C "$ROOT_DIR"
+else
+    make_reposf
+    # make it safe to install other things
+    mount_pseudo
+    msg "Installing minimal system at ${ROOT_DIR}..."
+    # install chimerautils
+    "$INSTALL_APK" --root "$ROOT_DIR" --keys-dir "$INSTALL_KEYS_DIR" \
+        --repositories-file "$REPOSF" $INSTALL_APK_ARGS \
+        --initdb add chimerautils
+fi
+
+if [ $? -ne 0 ]; then
+    die "initial installation failed"
+fi
+
+if [ $# -gt 0 ]; then
+    make_reposf
+    # make it safe to install other things
+    mount_pseudo
+
+    msg "Installing additional packages..."
+    # install the other desired packages
+    "$INSTALL_APK" --root "$ROOT_DIR" --keys-dir "$INSTALL_KEYS_DIR" \
+        --repositories-file "$REPOSF" $INSTALL_APK_ARGS add "$@"
+
+    if [ $? -ne 0 ]; then
+        die "package installation failed"
+    fi
+
+    umount_pseudo
+    rm -f "$REPOSF" "$EREPOSF"
+    unset REPOSF EREPOSF
+fi
+
+umount_pseudo
+
+msg "Chimera bootstrap successful at ${ROOT_DIR}."
+echo "You can use chimera-chroot to get a shell in the system."
+echo "Please perform all post-installation steps now (bootloader etc.)."
+
+exit 0

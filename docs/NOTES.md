@@ -672,12 +672,68 @@ check.
   this project's own stated goal (reach people beyond personal use,
   unlike the rest of the d77 family), going public makes sense
   eventually -- user's own call on timing, not done yet.
-- **Groups/services, a more integrated version**: `h77-installer`'s
-  current post-install fix-up (`files/post-install`) is a bolt-on
-  script that runs after `chimera-installer` itself exits. A more
-  integrated version, closer to what `void-installer` actually does
-  (real interactive Groups/Services checklists as part of the
-  installer's own menu flow, not a fixed script run afterward), would
-  mean patching `chimera-installer` directly -- the same kind of patch
-  already done for `9990-chimera-user.sh` on the live side. Not
-  started; explicitly deferred.
+- **Groups/services, a more integrated version**: DONE, same night,
+  right after this was written -- user asked directly: "consegues
+  fazer o patch do chimera-installer para ter isso sem quebrar?".
+
+## 2026-09-12 night, later still :: chimera-installer patched directly for real groups/services
+
+Vendored `chimera-install-scripts` (`vendor/chimera-install-scripts/`,
+same pattern as `chimera-live`: real upstream source, gh api fetch of
+`chimera-installer`/`chimera-bootstrap`/`chimera-chroot`/`genfstab`/
+`COPYING.md`, pinned to the exact commit cports' own
+`chimera-install-scripts-0.6.1` template builds from). Patched
+`chimera-installer` itself with two ADDITIVE features, modeled
+directly on `void-installer`'s own real structure (verified against
+its source, not guessed):
+
+- **Groups**: a checklist appended to the end of `menu_user_account()`
+  -- built from the LIVE's own `/etc/group` (system groups filtered by
+  gid/name, same filter shape as void-installer's), preset
+  `wheel,network,storage,audio,video`, freely adjustable, stored as
+  `USERGROUPS`. The actual `useradd`/`usermod` block later in
+  `menu_install` uses it if set, falling back to the EXACT original
+  upstream `-a -G wheel` behavior if it's unset (dialog cancelled, or
+  an old config) -- so this can't regress the existing flow.
+- **Services**: a NEW `menu_hybrid_services()`, called from
+  `menu_install` right after bootloader install (same placement
+  void-installer uses for its own `menu_services`, right after
+  `set_bootloader` -- by this point real package/service files exist
+  on `$sysroot` to check for). Deliberately NOT a scan of every file
+  under `usr/lib/dinit.d/` -- unlike a runit `/etc/sv/<name>/`
+  directory, a flat dinit service file doesn't reliably say "this is a
+  real standalone service, safe to toggle" vs. an internal/dependency
+  -only one. Sticks to the same small, individually-verified-real
+  candidate list `h77-installer`'s own post-install script already
+  used: `polkitd`, `networkmanager`, `seatd`, `rtkit`, `syslog-ng`
+  (only offered if the package is actually on target), all preset ON,
+  enabling via the same `/etc/dinit.d/boot.d/` symlink convention used
+  everywhere else in this project.
+
+New package **`pkg/h77-install-scripts`** ships the four patched
+scripts (`install_bin` each, real `cbuild` API, not guessed) +
+`COPYING.md` (`install_license`, BSD-2-Clause carried over unmodified)
+-- replaces the real `chimera-install-scripts` package entirely in
+`mklive-image.sh`'s PKGS (removed there, `h77-install-scripts` added
+instead; `dialog` added explicitly since it was previously pulled in
+transitively via the real package's own `depends=`). NOT
+`depends=["cmd:apk!apk-tools", ...]` the way upstream's own
+template.py declares them -- same `cbuild` "depends= needs a local
+template" limitation hit repeatedly this session; every one of those
+real deps is already in this project's own package set except
+`dialog`.
+
+**`h77-installer` simplified back to a plain `exec`** now that the
+interactive checklists exist: the old always-run post-install fix-up
+would have silently re-applied its own defaults even over an explicit
+uncheck in the new dialogs, a real correctness conflict once both
+existed. `files/post-install` stays installed as a manual-only
+fallback (network-source installs, or reapplying by hand), header
+comment updated to say so plainly.
+
+Not yet tested against a real interactive install run (dialog
+checklists behave correctly on paper, verified against real
+`ui_dialog`/`config_get`/`config_set` conventions already used
+elsewhere in the same file, but never actually clicked through) --
+next real disk install should confirm both checklists render and
+apply correctly.

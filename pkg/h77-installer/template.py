@@ -1,10 +1,11 @@
 # hybrid-d77 :: thin installer wrapper, as a cports package.
 #
 # NOT a custom installer -- reuses Chimera's own real
-# chimera-installer/chimera-bootstrap (chimera-install-scripts,
-# `main` tier, confirmed real against the actual repo) for everything
-# that matters: partitioning, bootstrap, user creation, bootloader.
-# This package only ships:
+# chimera-installer/chimera-bootstrap, now via this project's own
+# patched fork (pkg/h77-install-scripts, see that template.py) which
+# adds real interactive groups/services checklists directly into
+# chimera-installer itself -- see that package's own header comment
+# for the full reasoning. This package only ships:
 #   - files/installer.conf -> /etc/h77/installer.conf: pre-filled
 #     INSTALL_CONFIG_* answers (chimera-installer's own real config
 #     file format, confirmed against its source's config_load()), so
@@ -13,18 +14,16 @@
 #     (notably: NOT the package list -- local-source installs get
 #     h77-dots/h77-sway-dots for free via chimera-bootstrap's own
 #     local tar-copy of the live's rootfs, no apk/network involved).
-#   - files/h77-installer -> /usr/bin: runs chimera-installer, then a
-#     small post-install fix-up (see files/post-install's own header
-#     comment for exactly why it's needed -- chimera-installer only
-#     ever adds the new user to "wheel" and has no services step at
-#     all, confirmed against its real source, unlike Void's own
-#     void-installer which has both a groups and a services checklist).
-#   - files/post-install -> /usr/lib/h77-installer/post-install: adds
-#     network/storage/audio/video to the installed user, enables the
-#     dinit services this desktop needs that don't self-enable
-#     (polkitd, networkmanager, seatd, rtkit, syslog-ng -- dbus and
-#     elogind already self-enable via their own templates'
-#     install_service(..., enable=True), confirmed by reading them).
+#   - files/h77-installer -> /usr/bin: `exec chimera-installer -c
+#     /etc/h77/installer.conf "$@"`, nothing more -- the groups/
+#     services gaps this used to paper over with an always-run
+#     post-install fix-up are now handled by the interactive checklists
+#     themselves (see h77-install-scripts).
+#   - files/post-install -> /usr/lib/h77-installer/post-install: kept
+#     as a MANUAL fallback only (not auto-run from h77-installer
+#     anymore -- see that file's own header comment for why running it
+#     unconditionally would now conflict with an explicit uncheck in
+#     the interactive dialogs).
 #
 # Kickoff of the disk-installer work, 2026-09-12 -- the live-ISO side
 # of this project was the priority until now ("o trabalho de instalar

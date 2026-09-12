@@ -1,0 +1,1369 @@
+#!/bin/sh
+#
+# Chimera Linux installer
+#
+# Copyright 2025 q66 <q66@chimera-linux.org>
+#
+# License: BSD-2-Clause
+#
+
+trap "die" INT TERM QUIT
+
+# configuration handling
+
+config_get() {
+    local pstr
+    pstr="^INSTALL_CONFIG_${1}="
+    env | grep "$pstr" | sed "s,${pstr},,"
+}
+
+config_set() {
+    eval export INSTALL_CONFIG_${1}="${2}"
+}
+
+config_set_answer() {
+    local EVAL=$(cat "$ANSWER_FILE")
+    eval export INSTALL_CONFIG_${1}="$EVAL"
+}
+
+config_is() {
+    test "$(config_get $1)" = "$2"
+}
+
+config_has() {
+    test -n "$(config_get $1)"
+}
+
+config_load() {
+    local evar
+    for evar in $(grep "^INSTALL_CONFIG_" "$1"); do
+        local EKEY=${evar%%=*}
+        local EVAL=${evar#*=}
+        eval export $EKEY="$EVAL"
+    done
+}
+
+config_dump() {
+    env | grep "^INSTALL_CONFIG_" | sort
+}
+
+# utilities
+
+# for dialog
+ANSWER_FILE=$(mktemp /tmp/chimera-installer.XXXXXX || exit 1)
+DUMP_FILE=$(mktemp /tmp/chimera-installer-tmp.XXXXXX || exit 1)
+INSTALLER_FILE=$(mktemp /tmp/chimera-installer-sh.XXXXXX || exit 1)
+CONFIG_FILE=
+
+die() {
+    rm -f "$ANSWER_FILE"
+    rm -f "$DUMP_FILE"
+    rm -f "$INSTALLER_FILE"
+    if [ -z "$1" ]; then
+        exit 0
+    fi
+    echo "$1" >&2
+    exit 1
+}
+
+get_drives() {
+    local dev size sectsz sizegb
+    # matches physical drives (SATA, NVMe etc.)
+    for dev in $(ls /sys/block | grep -E '^([sv]|xv)d|mmcblk|nvme'); do
+        echo "/dev/${dev}"
+        size=$(cat /sys/block/${dev}/size)
+        sectsz=$(cat /sys/block/${dev}/queue/hw_sector_size)
+        sizegb=$((${size} * ${sectsz} / 1024 / 1024 / 1024))
+        echo "size:${sizegb},raw_size:${size},sector_size:${sectsz}"
+    done
+}
+
+get_blkinfo() {
+    local fstype fssize
+    if [ ! -b "$1" ]; then
+        return
+    fi
+    fstype=$(lsblk -nfr -o fstype "$1" | head -n1)
+    [ "$fstype" = "iso9660" ] && return
+    [ "$fstype" = "crypto_LUKS" ] && return
+    [ "$fstype" = "LVM2_member" ] && return
+    fssize=$(lsblk -nr -o fssize "$1" | head -n1)
+
+    echo "$1"
+    echo "size:${fssize:-unknown},fstype:${fstype:-none}"
+}
+
+get_partitions() {
+    local diskn part
+    # physical drives first
+    set -- $(get_drives)
+    while [ $# -ne 0 ]; do
+        diskn=$(basename "$1")
+        shift 2
+        for part in /sys/block/${diskn}/${diskn}*; do
+            [ -d "$part" ] || continue
+            get_blkinfo "/dev/${part}"
+        done
+    done
+
+    # device mapper next
+    for part in /dev/mapper/*; do
+        get_blkinfo "$part"
+    done
+
+    # now mdadm
+    for part in $(ls -d /dev/md* 2>/dev/null | grep '[0-9]'); do
+        part=$(basename "$part")
+        if ! cat /proc/mdstat | grep -qw "$part"; then
+            continue
+        fi
+        get_blkinfo "/dev/${part}"
+    done
+}
+
+gen_crypttab() {
+    local csysroot="$1"
+    local ctabout="$2"
+    local fstype fsbase nfsbase rootpart hasdevs cryptn discmax devn devt ndevname
+
+    if [ -f "$ctabout" ]; then
+        return 0
+    fi
+
+    set --
+
+    # keep track of devices we already encountered
+    hasdevs=
+
+    for fsbase in $(findmnt -Rln -o SOURCE "$csysroot"); do
+        # filter devices only
+        case "$fsbase" in
+            /dev/*) ;;
+            *) continue ;;
+        esac
+        # only block devices to filter out bracketed stuff
+        if [ ! -b "$fsbase" ]; then
+            continue
+        fi
+        # see if it's root partition
+        rootpart=$(findmnt -rno TARGET "$fsbase" | head -n1)
+        # resolve to raw device
+        fsbase=$(readlink -f "$fsbase")
+        fsbase=${fsbase##*/}
+        # only consider device mapper
+        case "$fsbase" in
+            dm-*) ;;
+            *) continue ;;
+        esac
+        # this should never really fail but just in case...
+        if [ ! -d "/sys/block/${fsbase}" ]; then
+            continue
+        fi
+        # resolve slaves enough to reach the dm device on the raw device
+        while :; do
+            nfsbase=
+            local sl
+            for sl in "/sys/block/${fsbase}/slaves/"*; do
+                if [ ! -d "$sl" ]; then
+                    break
+                fi
+                case ${sl##*/} in
+                    # slave is dm-*, move on...
+                    dm-*)
+                        nfsbase=${sl##*/}
+                        break
+                        ;;
+                esac
+            done
+            # didn't find a new base
+            if [ -z "$nfsbase" ]; then
+                break
+            fi
+            fsbase="$nfsbase"
+        done
+        # save the mapper name, it's likely the crypt name
+        cryptn=$(cat "/sys/block/${fsbase}/dm/name")
+        # now resolve to the raw device via slaves again
+        nfsbase=
+        for sl in "/sys/block/${fsbase}/slaves/"*; do
+            if [ ! -d "$sl" ]; then
+                break
+            fi
+            sl=${sl##*/}
+            if [ ! -b "/dev/${sl}" ]; then
+                continue
+            fi
+            nfsbase="$sl"
+            break
+        done
+        if [ -z "$nfsbase" ]; then
+            continue
+        fi
+        fsbase="$nfsbase"
+        # check if it's luks...
+        fstype=$(blkid --match-tag TYPE --output value "/dev/$fsbase")
+        if [ "$fstype" != "crypto_LUKS" ]; then
+            continue
+        fi
+        case "$hasdevs" in
+            *"/dev/${fsbase},"*)
+                continue
+                ;;
+        esac
+        set -- "$@" "/dev/$fsbase" "$cryptn" "$rootpart"
+        hasdevs="${hasdevs}/dev/${fsbase},"
+    done
+
+    while [ $# -ne 0 ]; do
+        # default params
+        params=luks
+        # if the device supports trim, let us trim the encrypted fs too
+        discmax=$(lsblk -bnrdD -o DISC_MAX "$1")
+        if [ "$discmax" -ne 0 ]; then
+            params="${params},discard"
+        fi
+        # if this is for /, also include in initramfs
+        # usually this is not needed but it is for e.g. zfs
+        if [ "$3" = "/" ]; then
+            params="${params},initramfs"
+        fi
+        # this name is raw, we want a stable value
+        devname="$1"
+        # try in this order, from best to worst
+        for devt in partlabel partuuid uuid; do
+            ndevname=
+            for devn in /dev/disk/by-$devt/*; do
+                [ -b "$devn" ] || continue
+                rawd=$(readlink -f "$devn")
+                if [ "$rawd" = "$devname" ]; then
+                    ndevname="$(echo $devt | tr '[:lower:]' '[:upper:]')=${devn##*/}"
+                    break
+                fi
+            done
+            if [ -n "$ndevname" ]; then
+                devname="$ndevname"
+                break
+            fi
+        done
+        # and generate, this does not support keyfiles etc. so it's pretty basic
+        echo "$2 $devname none $params" >> "$ctabout"
+        shift 3
+    done
+
+    if [ ! -f "$ctabout" ]; then
+        return 1
+    fi
+
+    return 0
+}
+
+# early checks
+
+if [ "$(id -u)" -ne 0 ]; then
+    die "must be run as root"
+fi
+
+if ! command -v dialog > /dev/null 2>&1; then
+    die "dialog command is missing"
+fi
+
+# ui routines
+
+DLG_BLACK="\Z0"
+DLG_RED="\Z1"
+DLG_GREEN="\Z2"
+DLG_YELLOW="\Z3"
+DLG_BLUE="\Z4"
+DLG_MAGENTA="\Z5"
+DLG_CYAN="\Z6"
+DLG_WHITE="\Z7"
+DLG_BOLD="\Zb"
+DLG_REVERSE="\Zr"
+DLG_UNDERLINE="\Zu"
+DLG_RESET="\Zn"
+
+DLG_MENU_LABEL="\n${DLG_BOLD}The Enter key selects options. The Up/Down keys switch between\n
+options, the Tab or Left/Right key switches between buttons.${DLG_RESET}"
+
+ui_dialog() {
+    rm -f "$ANSWER_FILE"
+    dialog --colors --no-shadow --keep-tite \
+        --backtitle "${DLG_BOLD}${DLG_WHITE}Chimera Linux installer${DLG_RESET}" \
+        --cancel-label "Back" --aspect 20 "$@" 2>"$ANSWER_FILE"
+    return $?
+}
+
+ui_infobox() {
+    local titl="$1"
+    shift
+    dialog --colors --no-shadow \
+        --backtitle "${DLG_BOLD}${DLG_WHITE}Chimera Linux installer${DLG_RESET}" \
+        --aspect 20 --title "$titl" --infobox "$@"
+}
+
+ui_programbox() {
+    local titl="$1"
+    shift
+    stdbuf -oL -- "$@" 2>&1 | ui_dialog --title "$titl" --programbox 24 80
+}
+
+# command line options
+
+usage() {
+    if [ -z "$2" ]; then
+        echo "${1}: the Chimera Linux installer"
+    else
+        echo "${1}: ${2}"
+    fi
+    echo ""
+    echo "Available options:"
+    echo ""
+    echo "  -h, --help         Show this listing."
+    echo "  -c, --config CONF  Use the given configuration."
+    echo "  -N, --no-update    Don't try to update the installer."
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            usage "$0"
+            exit 0
+            ;;
+        -c|--config)
+            if [ -z "$2" ]; then
+                die "invalid configuration file"
+            fi
+            if [ ! -r "$2" ]; then
+                die "configuration file could not be read"
+            fi
+            CONFIG_FILE="$2"
+            shift 2
+            ;;
+        -N|--no-update)
+            SKIP_UPDATE_CHECK=1
+            shift
+            ;;
+        *)
+            usage "$@" "unknown option '$1'" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# initial system detection
+
+if ! config_has ARCH; then
+    config_set ARCH "$(uname -m)"
+fi
+
+if ! config_has TYPE; then
+    # detection
+    case "$(config_get ARCH)" in
+        ppc*) config_set TYPE ppc ;;
+        x86_64|i[456]86)
+            if [ -e /sys/firmware/efi/systab ]; then
+                config_set TYPE efi
+            else
+                config_set TYPE bios
+                config_set GRUB_TARGET "i386-pc"
+            fi
+            ;;
+        *)
+            if [ -e /sys/firmware/efi/systab ]; then
+                config_set TYPE efi
+            else
+                config_set TYPE unknown
+            fi
+            ;;
+    esac
+fi
+
+check_ppc() {
+    if config_has PPC_FLAVOR; then
+        return
+    fi
+    case "$1" in
+        *PowerNV*|*OPAL*) config_set PPC_FLAVOR opal ;;
+        *pSeries*|*CHRP*)
+            config_set PPC_FLAVOR chrp
+            config_set GRUB_TARGET "powerpc-ieee1275"
+            ;;
+        *PowerMac*|*MacRISC*)
+            config_set PPC_FLAVOR mac
+            config_set GRUB_TARGET "powerpc-ieee1275"
+            ;;
+    esac
+}
+
+case "$(config_get TYPE)" in
+    efi)
+        case "$(config_get ARCH)" in
+            aarch64) config_set GRUB_TARGET "arm64-efi" ;;
+            *) config_set GRUB_TARGET "$(config_get ARCH)-efi" ;;
+        esac
+        ;;
+    ppc)
+        # early mac check
+        case "$(grep '^pmac-generation' /proc/cpuinfo)" in
+            *OldWorld*)
+                # not really used but...
+                config_set PPC_FLAVOR mac_ow
+                ;;
+            *NewWorld*)
+                config_set PPC_FLAVOR mac
+                config_set GRUB_TARGET "powerpc-ieee1275"
+                ;;
+        esac
+        # perform more specific checks for different ppc platforms
+        check_ppc "$(grep '^platform' /proc/cpuinfo)"
+        # examples: 'PowerMac3,1 MacRISC MacRISC2 Power Macintosh'
+        check_ppc "$(grep '^motherboard' /proc/cpuinfo)"
+        # examples: 'PowerNV T2P9S01 REV 1.01', 'PowerMac3,1', 'CHRP IBM pSeries'
+        check_ppc "$(grep '^machine' /proc/cpuinfo)"
+        # examples: 'T2P9S01 REV 1.01', 'PowerMac3,1', 'IBM pSeries'
+        check_ppc "$(grep '^model' /proc/cpuinfo)"
+        # examples: 'OPAL'
+        check_ppc "$(grep '^firmware' /proc/cpuinfo)"
+        ;;
+esac
+
+# ui handling
+
+menu_source() {
+    ui_dialog --title "Installation type" \
+        --menu "${DLG_MENU_LABEL}" 10 70 0 \
+        "Local" "Copy system from installation media" \
+        "Network" "Install system from the repository"
+
+    case $(cat "$ANSWER_FILE") in
+        "Local") config_set SOURCE local ;;
+        "Network") config_set SOURCE network ;;
+        *) return 1 ;;
+    esac
+}
+
+menu_hostname() {
+    while :; do
+        ui_dialog --inputbox "Please set the machine hostname:" 14 60 "$(config_get HOSTNAME)"
+        if [ $? -eq 0 ]; then
+            config_set_answer HOSTNAME
+            if config_has HOSTNAME; then
+                break
+            fi
+        else
+            return
+        fi
+    done
+}
+
+menu_mirror() {
+    local item itp
+
+    rm -f "$DUMP_FILE"
+    fetch -o "$DUMP_FILE" "https://repo.chimera-linux.org/mirrors.txt"
+    if [ $? -ne 0 ]; then
+        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to fetch mirror list (no internet?)" 8 70
+        rm -f "$DUMP_FILE"
+        return 1
+    fi
+
+    # haha gross shell things
+    items=$(cat "$DUMP_FILE" | sed 's, ,^,g')
+    set -- "Default" "Don't select a mirror"
+    for item in $items; do
+        for itp in $(echo $item | sed 's,\^, ,'); do
+            itp=$(echo $itp | sed 's,\^, ,g')
+            set -- "$@" "$itp"
+        done
+    done
+
+    ui_dialog --title "Mirror selection" \
+        --menu "${DLG_MENU_LABEL}" 19 80 19 \
+        "$@"
+    if [ $? -ne 0 ]; then
+        return 0
+    fi
+
+    config_set_answer MIRROR
+}
+
+menu_timezone() {
+    local area loc
+    while :; do
+        ui_dialog --title "Area selection" ${area:+--default-item $area} \
+            --menu "${DLG_MENU_LABEL}" 19 70 19 \
+            "Africa" "Africa" \
+            "America" "America" \
+            "Antarctica" "Antarctica" \
+            "Arctic" "Arctic" \
+            "Asia" "Asia" \
+            "Atlantic" "Atlantic" \
+            "Australia" "Australia" \
+            "Europe" "Europe" \
+            "Indian" "Indian" \
+            "Pacific" "Pacific"
+        if [ $? -ne 0 ]; then
+            # back without setting anything
+            return 0
+        fi
+        # display the location selector
+        area=$(cat "$ANSWER_FILE")
+        set --
+        for loc in $(find /usr/share/zoneinfo/"$area" -type f | sort); do
+            loc=${loc##*/}
+            set -- "$@" "$loc" "$loc"
+        done
+        ui_dialog --title "Location selection" \
+            --menu "${DLG_MENU_LABEL}" 19 70 19 "$@"
+        if [ $? -ne 0 ]; then
+            # back to area selection...
+            continue
+        fi
+        loc=$(cat "$ANSWER_FILE")
+        config_set TIMEZONE "${area}/${loc}"
+        return 0
+    done
+}
+
+menu_password() {
+    local answer1 answer2 descr
+    while :; do
+        if [ -n "$answer1" -a -z "$answer2" ]; then
+            descr=" again"
+        fi
+        ui_dialog --insecure --passwordbox "Enter the password for user "$1"${descr}" 8 60
+        if [ $? -ne 0 ]; then
+            return
+        fi
+        if [ -z "$answer1" ]; then
+            answer1=$(cat "$ANSWER_FILE")
+        else
+            answer2=$(cat "$ANSWER_FILE")
+        fi
+        if [ -n "$answer1" -a -n "$answer2" ]; then
+            if [ "$answer1" != "$answer2" ]; then
+                ui_infobox "Invalid password" "Passwords do not match." 6 60
+                answer1=
+                answer2=
+                descr=
+                sleep 2
+                continue
+            fi
+            config_set "$2" "$answer1"
+            break
+        fi
+    done
+}
+
+menu_user_account() {
+    while :; do
+        ui_dialog --inputbox "Enter a user name:" 8 60 "$(config_get USERNAME)"
+        if [ $? -ne 0 ]; then
+            continue
+        fi
+        config_set_answer USERNAME
+        if config_has USERNAME; then
+            break
+        fi
+    done
+
+    while :; do
+        ui_dialog --inputbox "Enter a full name (may be empty):" 8 60 "$(config_get FULLNAME)"
+        if [ $? -ne 0 ]; then
+            continue
+        fi
+        config_set_answer FULLNAME
+        break
+    done
+
+    menu_password "$(config_get USERNAME)" PASSWORD
+
+    # hybrid-d77 patch: upstream chimera-installer has NO group
+    # selection at all (confirmed against its own real source -- the
+    # user only ever gets added to "wheel", hardcoded, later in
+    # menu_install). Adds a checklist here, same shape as Void's own
+    # void-installer (menu_useraccount there): built from the LIVE's
+    # own /etc/group (system groups filtered out by gid/name), a sane
+    # default preset, freely adjustable. Purely additive -- if this
+    # dialog is cancelled, USERGROUPS just stays unset and the
+    # existing hardcoded "wheel"-only behavior in menu_install is
+    # unaffected (see the matching patch there).
+    local _hd77_group _hd77_gid _hd77_status _hd77_checklist _hd77_default
+    _hd77_default="wheel,network,storage,audio,video"
+    _hd77_checklist=""
+    while IFS=: read -r _hd77_group _hd77_pw _hd77_gid _hd77_rest; do
+        case "$_hd77_gid" in
+            ''|*[!0-9]*) continue ;;
+        esac
+        [ "$_hd77_gid" -ge 1000 ] && continue
+        case "$_hd77_group" in
+            root | nogroup | _*) continue ;;
+        esac
+        if echo "$_hd77_default" | grep -qw "$_hd77_group"; then
+            _hd77_status=on
+        else
+            _hd77_status=off
+        fi
+        _hd77_checklist="$_hd77_checklist $_hd77_group $_hd77_group:$_hd77_gid $_hd77_status"
+    done < /etc/group
+    ui_dialog --no-tags --checklist \
+        "Select group membership for '$(config_get USERNAME)':" \
+        20 60 18 $_hd77_checklist
+    if [ $? -eq 0 ]; then
+        config_set USERGROUPS "$(cat "$ANSWER_FILE" | sed -e 's/ /,/g')"
+    fi
+}
+
+menu_sysroot() {
+    local sysroot=$(config_get SYSROOT)
+    if [ -z "$sysroot" ]; then
+        sysroot="/mnt/root"
+    fi
+    while :; do
+        ui_dialog --inputbox "Please enter the system root mount.\n\n
+This is where the system will be installed and must be set to\n
+a valid mount point (the structure will be validated)." 14 70 "$sysroot"
+        if [ $? -eq 0 ]; then
+            sysroot=$(cat "$ANSWER_FILE")
+            if ! mountpoint -q "$sysroot" > /dev/null 2>&1; then
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} the system root is invalid" 8 70
+                continue
+            fi
+            config_set SYSROOT "$sysroot"
+            break
+        else
+            return
+        fi
+    done
+}
+
+menu_kernel() {
+    # now bring up the menu
+    ui_dialog --title "Kernel" \
+        --menu "${DLG_MENU_LABEL}" 12 70 0 \
+        "Stable" "Use the latest stable kernel." \
+        "LTS" "Use the latest long-term support kernel." \
+        "None" "Don't choose a kernel here (e.g. local installations)."
+
+    case $(cat "$ANSWER_FILE") in
+        "Stable") config_set KERNEL stable ;;
+        "LTS") config_set KERNEL lts ;;
+        "None") ;;
+        *) return 1 ;;
+    esac
+}
+
+menu_packages() {
+    ui_dialog --inputbox "Specify additional packages to install:" 14 60 "$(config_get PACKAGES)"
+    if [ $? -eq 0 ]; then
+        config_set_answer PACKAGES
+        config_set PACKAGES_HAVE 1
+    fi
+}
+
+menu_bootloader_esp() {
+    local espath=$(config_get BOOTLOADER_ESP)
+    if [ -z "$espath" ]; then
+        espath="auto"
+    fi
+    while :; do
+        ui_dialog --inputbox "If you wish to specify the EFI partition mount, set it here.\n\n
+If you have multiple ESP mounts, you should be explicit here.\n
+Most configurations with one ESP don't have to specify anything." 12 70 "$espath"
+        if [ $? -eq 0 ]; then
+            espath=$(cat "$ANSWER_FILE")
+            config_set BOOTLOADER_ESP "$espath"
+            if [ -n "$1" ]; then
+                config_set BOOTLOADER "$1"
+            fi
+            break
+        else
+            return
+        fi
+    done
+}
+
+menu_bootloader_mbr() {
+    local diskn bdevs bdev bootln
+    bootln="$1"
+    # we only care about physical drives, because the MBR can only be
+    # installed to a whole physical disk, and it has to be MBR
+    set -- $(get_drives)
+    bdevs=
+    while [ $# -ne 0 ]; do
+        diskn="$1"
+        shift 2
+        disktp=$(blkid --match-tag PTTYPE --output value "$diskn")
+        if [ "$disktp" = "dos" ]; then
+            bdevs="$bdevs $diskn"
+        fi
+    done
+
+    # sorted list of bootstrap drives
+    set -- $(echo $bdevs | tr ' ' '\n' | sort)
+    bdevs="$@"
+
+    # ensure there is at least one
+    if [ $# -eq 0 ]; then
+        ui_dialog --msgbox "No valid MBR drives have been found." 8 70
+        return 1
+    fi
+
+    # turn it into a menuable list
+    set --
+    for bdev in $bdevs; do
+        set -- "$@" "$bdev" "$bdev"
+    done
+
+    ui_dialog --title "Select the disk to install the bootloader MBR" \
+        --menu "${DLG_MENU_LABEL}" 14 70 0 "$@"
+    if [ $? -ne 0 ]; then
+        return 0
+    fi
+
+    bdev=$(cat "$ANSWER_FILE")
+    config_set BOOTLOADER_MBR "$bdev"
+    config_set BOOTLOADER "$bootln"
+}
+
+menu_bootloader_ofpart() {
+    local bdev bdevs nbdevs btype diskn bootln
+    bootln="$1"
+    # we only care about physical drives, because the boootstrap partition
+    # cannot be present on device mapper or on mdadm or anything like that
+    #
+    # for macs, we need an Apple_Bootstrap drive on APM
+    # for chrp we need PPC PReP partition on MBR or GPT
+    set -- $(get_drives)
+    bdevs=
+    while [ $# -ne 0 ]; do
+        diskn="$1"
+        shift 2
+        case "$(config_get PPC_FLAVOR)" in
+            mac)
+                # dump partition table for this disk
+                # grep only device info
+                # filter first two columns to avoid labels influencing it
+                # filter out Apple_Bootstrap partitions only
+                # and finally get only the device column
+                nbdevs=$(mac-fdisk -r -l "$diskn" 2>/dev/null | grep '^/dev' | awk '{print $1 " "  $2}' | grep Apple_Bootstrap | awk '{print $1}')
+                if [ -n "$nbdevs" ]; then
+                    bdevs="$bdevs $nbdevs"
+                fi
+                ;;
+            chrp)
+                # for chrp, make sure the disk is MBR or GPT
+                case $(blkid --match-tag PTTYPE --output value "$diskn") in
+                    dos)
+                        # check mbr partition type here (0x41)
+                        for part in /sys/block/${diskn}/${diskn}*; do
+                            [ -d "$part" ] || continue
+                            btype=$(lsblk -n -o PARTTYPE "/dev/${part}")
+                            if [ "$btype" = "0x41" ]; then
+                                bdevs="$bdevs /dev/${part}"
+                            fi
+                        done
+                        ;;
+                    gpt)
+                        # check gpt partition type here (9e1a2d38-c612-4316-aa26-8b49521e5a8b)
+                        for part in /sys/block/${diskn}/${diskn}*; do
+                            [ -d "$part" ] || continue
+                            btype=$(lsblk -n -o PARTTYPE "/dev/${part}")
+                            if [ "$btype" = "9e1a2d38-c612-4316-aa26-8b49521e5a8b" ]; then
+                                bdevs="$bdevs /dev/${part}"
+                            fi
+                        done
+                        ;;
+                    *) ;;
+                esac
+                ;;
+            # ???
+            *) return 1 ;;
+        esac
+    done
+
+    # sorted list of bootstrap partitions
+    set -- $(echo $bdevs | tr ' ' '\n' | sort)
+    bdevs="$@"
+
+    # ensure there is at least one
+    if [ $# -eq 0 ]; then
+        ui_dialog --msgbox "No valid bootstrap partition(s) have been found." 8 70
+        return 1
+    fi
+
+    # turn it into a menuable list
+    set --
+    for bdev in $bdevs; do
+        set -- "$@" "$bdev" "$bdev"
+    done
+
+    ui_dialog --title "Select the bootstrap partition to install the bootloader" \
+        --menu "${DLG_MENU_LABEL}" 14 70 0 "$@"
+    if [ $? -ne 0 ]; then
+        return 0
+    fi
+
+    bdev=$(cat "$ANSWER_FILE")
+    config_set BOOTLOADER_OFPART "$bdev"
+    config_set BOOTLOADER "$bootln"
+}
+
+menu_bootloader_grub() {
+    case "$(config_get TYPE)" in
+        bios)
+            menu_bootloader_mbr grub
+            return $?
+            ;;
+        efi)
+            menu_bootloader_esp grub
+            return $?
+            ;;
+        ppc)
+            case "$(config_get PPC_FLAVOR)" in
+                chrp|mac)
+                    menu_bootloader_ofpart grub
+                    return $?
+                    ;;
+                opal)
+                    # don't need to specify anything for opal
+                    config_set BOOTLOADER grub
+                    return 0
+                    ;;
+            esac
+            ;;
+    esac
+
+    return 1
+}
+
+menu_bootloader() {
+    set --
+    # offer the option for GRUB if we can install it
+    if config_has GRUB_TARGET; then
+        set -- "$@" "GRUB" "GNU GRUB"
+    fi
+    # for EFI systems, offer systemd-boot
+    case "$(config_get TYPE)" in
+        efi) set -- "$@" "systemd-boot" "systemd-boot" ;;
+        # we don't have other options for now...
+        *) ;;
+    esac
+    # offer the "none" option in any case
+    set -- "$@" "None" "Don't set up a bootloader"
+
+    # now bring up the menu
+    ui_dialog --title "Bootloader" \
+        --menu "${DLG_MENU_LABEL}" 12 70 0 "$@"
+
+    case $(cat "$ANSWER_FILE") in
+        "GRUB") menu_bootloader_grub ;;
+        "systemd-boot") menu_bootloader_esp systemd ;;
+        "None")
+            if config_is TYPE efi; then
+                # we still offer the option to pick an ESP mount for EFI
+                menu_bootloader_esp ""
+            else
+                config_set BOOTLOADER none
+            fi
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+# hybrid-d77 patch: upstream chimera-installer has NO services step at
+# all (confirmed against its own real source) -- unlike Void's own
+# void-installer, which offers one via a real checklist against
+# whatever the target actually has installed (its own menu_services,
+# TARGETDIR/etc/sv). This is the dinit equivalent, called from
+# menu_install once packages + bootloader are already on $sysroot (so
+# real service files exist to check for), right before the "installed"
+# dialog -- same placement void-installer uses (right after its own
+# set_bootloader call).
+#
+# Deliberately NOT a full scan of every file under usr/lib/dinit.d --
+# unlike a runit /etc/sv/<name>/ directory (unambiguously a real,
+# independent service), a flat dinit service-file directory also holds
+# internal/dependency-only entries this project has no reliable way to
+# tell apart from real ones without checking each one's own
+# dependencies. Sticking to a small, individually-confirmed-real list
+# (the same ones h77-dots' own post-install fix-up already covers, see
+# pkg/h77-installer/files/post-install) keeps this safe to ship.
+menu_hybrid_services() {
+    local sysroot="$1"
+    local _hd77_svc _hd77_status _hd77_checklist _hd77_candidates
+    _hd77_candidates="polkitd networkmanager seatd rtkit syslog-ng"
+    _hd77_checklist=""
+    for _hd77_svc in $_hd77_candidates; do
+        [ -f "$sysroot/usr/lib/dinit.d/$_hd77_svc" ] || continue
+        # always preset ON -- these are this project's own recommended
+        # defaults, not a reflection of anything already enabled
+        _hd77_status=on
+        _hd77_checklist="$_hd77_checklist $_hd77_svc $_hd77_svc $_hd77_status"
+    done
+    [ -n "$_hd77_checklist" ] || return 0
+    ui_dialog --no-tags --checklist \
+        "Select services to enable at boot:" 20 60 18 $_hd77_checklist
+    if [ $? -eq 0 ]; then
+        mkdir -p "$sysroot/etc/dinit.d/boot.d"
+        for _hd77_svc in $_hd77_candidates; do
+            [ -f "$sysroot/usr/lib/dinit.d/$_hd77_svc" ] || continue
+            if grep -qw "$_hd77_svc" "$ANSWER_FILE"; then
+                ln -sf "../$_hd77_svc" "$sysroot/etc/dinit.d/boot.d/$_hd77_svc"
+            else
+                rm -f "$sysroot/etc/dinit.d/boot.d/$_hd77_svc"
+            fi
+        done
+    fi
+}
+
+menu_install() {
+    local pttype sysroot espfs espdev esptp bootfs bootdev boottp
+
+    if ! config_has ROOT_PASSWORD; then
+        ui_dialog --msgbox "${DLG_BOLD}You have not yet configured the root password.${DLG_RESET}" 8 70
+        die
+    fi
+
+    if ! config_has SYSROOT; then
+        ui_dialog --msgbox "${DLG_BOLD}You have not set the install system root.${DLG_RESET}" 8 70
+        die
+    fi
+
+    sysroot=$(config_get SYSROOT)
+
+    if ! mountpoint -q "$sysroot" > /dev/null 2>&1; then
+        ui_dialog --msgbox "${DLG_BOLD}System root does not point to a valid mount.${DLG_RESET}" 8 70
+        die
+    fi
+
+    # normalize
+    sysroot=$(findmnt -no TARGET "$sysroot")
+    if [ "$sysroot" = "/" ]; then
+        ui_dialog --msgbox "${DLG_BOLD}System root is incorrectly configured.${DLG_RESET}" 8 7O
+        die
+    fi
+
+    # for EFI systems, ensure there is a valid ESP
+    if config_is TYPE efi; then
+        esp=
+        if ! config_has BOOTLOADER_ESP || config_is BOOTLOADER_ESP auto; then
+            # try to figure out an efi system partition in the mount tree
+            # start by locating all fat32 file systems
+            set -- $(findmnt -Rln -o SOURCE,FSTYPE "$sysroot" | grep "vfat$")
+            while [ $# -ne 0 ]; do
+                # see if the filesystem is an ESP
+                pttype=$(lsblk -n -o PARTTYPE "$1" 2>/dev/null)
+                if [ "$pttype" = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b" ]; then
+                    # already had an esp...
+                    if [ -n "$esp" ]; then
+                        ui_dialog --msgbox "${DLG_BOLD}Multiple EFI system partition mounts found.${DLG_RESET}" 8 70
+                        die
+                    fi
+                    # found an esp!
+                    esp=$(findmnt -ln -o TARGET "$1")
+                fi
+                shift 2
+            done
+        else
+            esp="${sysroot}/$(config_get BOOTLOADER_ESP)"
+        fi
+        # first make sure it's a mount
+        if [ -z "$esp" ] || ! mountpoint -q "$esp" > /dev/null 2>&1; then
+            ui_dialog --msgbox "${DLG_BOLD}EFI partition is not mounted.${DLG_RESET}" 8 70
+            die
+        fi
+        # then make sure it's FAT-formatted
+        espfs=$(findmnt -ln -o FSTYPE "$esp")
+        if [ "$espfs" != "vfat" ]; then
+            ui_dialog --msgbox "${DLG_BOLD}EFI partition must be FAT32.${DLG_RESET}" 8 70
+            die
+        fi
+        # the ensure it's a device that esp can be on
+        espdev=$(findmnt -ln -o SOURCE "$esp")
+        case "$espdev" in
+            /dev/[sv]d*|/dev/nvme*|/dev/mmcblk*) ;;
+            *)
+                ui_dialog --msgbox "${DLG_BOLD}EFI partition must be on a physical disk.${DLG_RESET}" 8 70
+                die
+                ;;
+        esac
+        # then ensure it has the correct type
+        esptp=$(lsblk -n -o PARTTYPE "$espdev")
+        if [ "$esptp" != "c12a7328-f81f-11d2-ba4b-00a0c93ec93b" ]; then
+            ui_dialog --msgbox "${DLG_BOLD}EFI partition has an incorrect partition type.${DLG_RESET}" 8 70
+            die
+        fi
+        # normalize
+        esp=$(findmnt -no TARGET "$esp")
+    else
+        esp=
+    fi
+
+    # for systemd-boot and separate /boot ensure it's xbootldr and vfat
+    if mountpoint -q "${sysroot}/boot" > /dev/null 2>&1 && config_is BOOTLOADER systemd && [ "$esp" != "${sysroot}/boot" ]; then
+        bootfs=$(findmnt -ln -o FSTYPE "${sysroot}/boot")
+        if [ "$bootfs" != "vfat" ]; then
+            ui_dialog --msgbox "${DLG_BOLD}XBOOTLDR partition must be FAT32.${DLG_RESET}" 8 70
+            die
+        fi
+        bootdev=$(findmnt -ln -o SOURCE "${sysroot}/boot")
+        boottp=$(lsblk -n -o PARTTYPE "$bootdev")
+        if [ "$boottp" != "bc13c2ff-59e6-4262-a352-b275fd6f7172" ]; then
+            ui_dialog --msgbox "${DLG_BOLD}XBOOTLDR partition must be Linux extended boot.${DLG_RESET}" 8 70
+            die
+        fi
+        bootmnt=$(findmnt -no TARGET "${sysroot}/boot")
+    else
+        bootmnt=
+    fi
+
+    # also verify there is no separate /usr partition
+    if mountpoint -q "${sysroot}/usr" > /dev/null 2>&1; then
+        ui_dialog --msgbox "${DLG_BOLD}Separate /usr mount is not supported.${DLG_RESET}" 8 70
+        die
+    fi
+
+    # mirror for bootstrap stage
+    set --
+    if config_has MIRROR && ! config_is MIRROR "Default"; then
+        mirror=$(config_get MIRROR)
+        set -- -m "$mirror"
+    else
+        mirror=
+    fi
+
+    # sanitize just in case, it has happened before
+    chmod 755 "$sysroot"
+
+    if ! config_has SOURCE || config_is SOURCE "local"; then
+        ui_programbox "Bootstrapping system..." chimera-bootstrap "$@" -l "$sysroot"
+    else
+        ui_programbox "Installing target packages..." chimera-bootstrap "$@" "$sysroot"
+    fi
+    if [ $? -ne 0 ]; then
+        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} system bootstrap failed" 8 70
+        die
+    fi
+
+    # if we have mirror, add it to the bootstrapped system to use for the rest of packages
+    if [ -n "$mirror" ]; then
+        mkdir -p "${sysroot}/etc/apk/repositories.d"
+        echo "set CHIMERA_REPO_URL=$mirror" > "${sysroot}/etc/apk/repositories.d/00-chimera-mirror.list"
+    fi
+
+    # build up a list of extra packages to install
+    if config_has PACKAGES; then
+        extrapkgs=$(config_get PACKAGES)
+    else
+        extrapkgs=
+    fi
+
+    # add bootloader to the list
+    case $(config_get BOOTLOADER) in
+        systemd)
+            if [ ! -f "${sysroot}/usr/bin/bootctl" ]; then
+                extrapkgs="$extrapkgs systemd-boot"
+            fi
+            ;;
+        grub)
+            if config_has GRUB_TARGET; then
+                if [ ! -f "${sysroot}/usr/lib/grub/$(config_get GRUB_TARGET)/kernel.img" ]; then
+                    extrapkgs="$extrapkgs grub-$(config_get GRUB_TARGET)"
+                fi
+            else
+                # only tools
+                if [ ! -f "${sysroot}/usr/bin/grub-mkconfig" ]; then
+                    extrapkgs="$extrapkgs grub"
+                fi
+            fi
+            ;;
+    esac
+
+    # add kernel to the list
+    case $(config_get KERNEL) in
+        stable) extrapkgs="$extrapkgs linux-stable" ;;
+        lts) extrapkgs="$extrapkgs linux-lts" ;;
+    esac
+
+    # only install stuff if we have anything
+    set -- $extrapkgs
+    if [ $# -ne 0 ]; then
+        ui_programbox "Updating package index..." chimera-chroot "$sysroot" apk --no-interactive update
+        if [ $? -ne 0 ]; then
+            ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to update apk index" 8 70
+            die
+        fi
+        ui_programbox "Installing extra packages..." chimera-chroot "$sysroot" apk --no-interactive add "$@"
+        if [ $? -ne 0 ]; then
+            ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to install extra packages" 8 70
+            die
+        fi
+    fi
+
+    ui_infobox "" "Applying settings..." 4 60
+
+    genfstab -U "$sysroot" > "${sysroot}/etc/fstab"
+
+    if gen_crypttab "$sysroot" "${sysroot}/etc/crypttab"; then
+        ui_dialog --msgbox "${DLG_BOLD}Encrypted partitions have been found.${DLG_RESET}\n\n
+The installer has generated an '/etc/crypttab'.\n
+If you are using keyfiles, keyscripts, or need special parameters,\n
+you will need to modify this file later (and refresh initramfs).\n\n
+The generated file will only work out of the box for basic setups." 12 70
+    fi
+
+    if config_has HOSTNAME; then
+        config_get HOSTNAME > "${sysroot}/etc/hostname"
+    fi
+
+    if config_has TIMEZONE; then
+        ln -sf /usr/share/zoneinfo/$(config_get TIMEZONE) "${sysroot}/etc/localtime"
+    fi
+
+    echo "root:$(config_get ROOT_PASSWORD)" | chpasswd -R "$sysroot" -c SHA512
+
+    if config_has USERNAME; then
+        useradd -R "$sysroot" -m -c "$(config_get FULLNAME)" "$(config_get USERNAME)"
+        # hybrid-d77 patch: use the checklist from menu_user_account
+        # if it was actually filled in; fall back to the exact
+        # original "wheel"-only behavior if USERGROUPS was never set
+        # (dialog cancelled, or an older/unpatched config file) -- so
+        # this never regresses an existing install flow.
+        if config_has USERGROUPS; then
+            usermod -R "$sysroot" -a -G "$(config_get USERGROUPS)" "$(config_get USERNAME)"
+        else
+            # default user has doas rights
+            usermod -R "$sysroot" -a -G wheel "$(config_get USERNAME)"
+        fi
+        echo "$(config_get USERNAME):$(config_get PASSWORD)" | chpasswd -R "$sysroot" -c SHA512
+    fi
+
+    ui_programbox "Regenerating initramfs..." chimera-chroot "$sysroot" update-initramfs -c -k all
+    if [ $? -ne 0 ]; then
+        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to regenerate initramfs" 8 70
+        die
+    fi
+
+    if config_has BOOTLOADER && ! config_is BOOTLOADER none; then
+        ui_infobox "" "Installing bootloader..." 4 60
+
+        # clear the bootstrap partition if we have one...
+        if config_has BOOTLOADER_OFPART; then
+            ofpart=$(config_get BOOTLOADER_OFPART)
+            macpart=
+            if [ ! -b "$ofpart" ]; then
+                # should not happen
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} bootstrap partition is not a block device" 8 70
+                die
+            fi
+
+            # zero the partition ahead of time just in case
+            dd if=/dev/zero of="$ofpart"
+
+            # for macs, format it with hfs
+            case "$(config_get PPC_FLAVOR)" in
+                mac)
+                    hformat -l bootstrap "$ofpart"
+                    macpart="${sysroot}/.apple_bootstrap"
+                    mkdir -p "$macpart"
+                    mount -t hfs "$ofpart" "$macpart"
+                    if [ $? -ne 0 ]; then
+                        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to mount Apple_Bootstrap" 8 70
+                        die
+                    fi
+                    ;;
+            esac
+        else
+            ofpart=
+        fi
+
+        if config_is BOOTLOADER systemd; then
+            # we're validated already, build up the arguments
+            set -- --esp-path "${esp#${sysroot}}"
+            # if using xbootldr, pass that too
+            if [ -n "$bootmnt" ]; then
+                set -- "$@" --boot-path "${bootmnt#${sysroot}}"
+            fi
+            # and do it
+            ui_programbox "Installing bootloader..." chimera-chroot "$sysroot" bootctl "$@" install
+            if [ $? -ne 0 ]; then
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to install bootloader" 8 70
+                die
+            fi
+            # also generate entries
+            ui_programbox "Generating boot entries..." chimera-chroot "$sysroot" gen-systemd-boot
+            if [ $? -ne 0 ]; then
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to generate boot entries" 8 70
+                die
+            fi
+        elif config_is BOOTLOADER grub; then
+            # install grub if we have a target, if not it's e.g. powernv
+            if config_has GRUB_TARGET; then
+                set -- --target=$(config_get GRUB_TARGET)
+                # esp directory if we have it
+                if [ -n "$esp" ]; then
+                    set -- "$@" --removable --efi-directory="${esp#${sysroot}}"
+                fi
+                # macppc directory if we have it
+                if [ -n "$macpart" ]; then
+                    set -- "$@" --no-nvram --macppc-directory="${macpart#${sysroot}}"
+                fi
+                # device if we have it, at the end
+                if [ -n "$ofpart" ]; then
+                    # partition
+                    set -- "$@" "$ofpart"
+                elif config_has BOOTLOADER_MBR; then
+                    # whole disk
+                    set -- "$@" $(config_get BOOTLOADER_MBR)
+                fi
+                # and do it
+                ui_programbox "Installing bootloader..." chimera-chroot "$sysroot" grub-install "$@"
+                if [ $? -ne 0 ]; then
+                    ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to install bootloader" 8 70
+                    if [ -n "$macpart" ]; then
+                        umount "$macpart"
+                    fi
+                    die
+                fi
+                # for macs, perform additional blessing
+                if [ -n "$macpart" ]; then
+                    umount "$macpart"
+                    rmdir "$macpart"
+                    hmount "$ofpart"
+                    if [ $? -ne 0 ]; then
+                        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to hmount the bootstrap partition" 8 70
+                        # don't die here, just let the user fix it after
+                    else
+                        hattrib -t tbxi -c UNIX :System:Library:CoreServices:BootX && hattrib -b :System:Library:CoreServices
+                        if [ $? -ne 0 ]; then
+                            ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to bless the bootstrap partition" 8 70
+                        fi
+                        humount
+                    fi
+                fi
+            else
+                # we still need a grub dir
+                mkdir -p "${sysroot}/boot/grub"
+            fi
+            # generate grub config
+            ui_programbox "Generating boot entries..." chimera-chroot "$sysroot" update-grub
+            if [ $? -ne 0 ]; then
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to generate boot entries" 8 70
+                die
+            fi
+        fi
+    fi
+
+    # hybrid-d77 patch: see menu_hybrid_services' own header comment.
+    # Placed here deliberately -- packages and the bootloader are both
+    # already on $sysroot at this point, so real service files exist
+    # to check for, same placement void-installer uses for its own
+    # menu_services (right after its own set_bootloader call).
+    menu_hybrid_services "$sysroot"
+
+    while :; do
+        ui_dialog --yesno "${DLG_BOLD}Chimera Linux has been installed.${DLG_RESET}\n
+Do you wish to open a shell to perform additional tasks?" 8 60
+        if [ $? -eq 0 ]; then
+            chimera-chroot "${sysroot}"
+        elif [ $? -eq 1 ]; then
+            break
+        else
+            continue
+        fi
+    done
+
+    ui_dialog --yesno "${DLG_BOLD}The installation has finished.${DLG_RESET}\n
+Do you wish to reboot now?" 8 60
+    if [ $? -eq 0 ]; then
+        reboot
+    fi
+}
+
+menu_entry() {
+    if [ -z "$MENU_DEFAULT_ITEM" ]; then
+        MENU_DEFAULT_ITEM="Source"
+    fi
+
+    ui_dialog --default-item "$MENU_DEFAULT_ITEM" \
+        --extra-button --extra-label "Settings" \
+        --title "Chimera Linux installer" \
+        --menu "${DLG_MENU_LABEL}" 10 70 0 \
+        "Source" "Installation type (network or local)" \
+        "Mirror" "Select apk network mirror to use" \
+        "Hostname" "System hostname" \
+        "Timezone" "System timezone" \
+        "RootPassword" "Root password" \
+        "UserAccount" "Your user name and password (admin account)" \
+        "SystemRoot" "Set the target path for bootstrap" \
+        "Kernel" "Select the kernel to use" \
+        "Packages" "Specify extra packages to install" \
+        "Bootloader" "Select the bootloader to use" \
+        "Install" "Perform the installation" \
+        "Exit" "Exit installation"
+
+    if [ $? -eq 3 ]; then
+        config_dump > "$DUMP_FILE"
+        ui_dialog --title "Installation configuration" --textbox "$DUMP_FILE" 14 80
+        rm -f "$DUMP_FILE"
+        return
+    fi
+
+    case $(cat "$ANSWER_FILE") in
+        "Source") menu_source && config_has SOURCE && MENU_DEFAULT_ITEM="Mirror" ;;
+        "Mirror") menu_mirror && config_has MIRROR && MENU_DEFAULT_ITEM="Hostname" ;;
+        "Hostname") menu_hostname && config_has HOSTNAME && MENU_DEFAULT_ITEM="Timezone" ;;
+        "Timezone") menu_timezone && config_has TIMEZONE && MENU_DEFAULT_ITEM="RootPassword" ;;
+        "RootPassword") menu_password root ROOT_PASSWORD && config_has ROOT_PASSWORD && MENU_DEFAULT_ITEM="UserAccount" ;;
+        "UserAccount") menu_user_account && config_has USERNAME && MENU_DEFAULT_ITEM="SystemRoot" ;;
+        "SystemRoot") menu_sysroot && config_has SYSROOT && MENU_DEFAULT_ITEM="Kernel" ;;
+        "Kernel") menu_kernel && config_has KERNEL && MENU_DEFAULT_ITEM="Packages" ;;
+        "Packages") menu_packages && config_has PACKAGES_HAVE && MENU_DEFAULT_ITEM="Bootloader" ;;
+        "Bootloader") menu_bootloader && config_has BOOTLOADER && MENU_DEFAULT_ITEM="Install" ;;
+        "Install") menu_install ;;
+        "Exit") die ;;
+        *) ui_dialog --yesno "Exit installation?" 8 60 && die
+    esac
+}
+
+# entry point
+
+ui_dialog --title "${DLG_BOLD}${DLG_RED} Welcome to Chimera Linux installation${DLG_RESET}" \
+    --msgbox "\n
+Welcome to Chimera Linux installation.\n\n
+Chimera Linux is a general-purpose Linux distribution built from scratch.\n
+This program will guide you through installing it onto your computer.\n\n
+You will be given a variety of options allowing you to customize the setup.\n\n
+If you need more help, please refer to ${DLG_BOLD}https://chimera-linux.org/docs/${DLG_RESET}\n
+or one of our communication channels." 16 80
+
+if [ -z "$SKIP_UPDATE_CHECK" ]; then
+    ui_dialog --yesno "${DLG_BOLD}This installer is experimental.${DLG_RESET}\n
+Do you wish to fetch and run the latest available version? (needs network)?" 8 60
+    if [ $? -eq 0 ]; then
+        rm -f "$INSTALLER_FILE"
+        fetch -o "$INSTALLER_FILE" "https://raw.githubusercontent.com/chimera-linux/chimera-install-scripts/refs/heads/master/chimera-installer"
+        if [ $? -ne 0 ]; then
+            ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to fetch the installer (no internet?)" 8 70
+            rm -f "$INSTALLER_FILE"
+        else
+            set -- -N
+            if [ -n "$CONFIG_FILE" ]; then
+                set -- "$@" -c "$CONFIG_FILE"
+            fi
+            # rexec
+            exec /bin/sh "$INSTALLER_FILE" "$@"
+        fi
+    fi
+fi
+
+if [ -n "$CONFIG_FILE" ]; then
+    config_load "$CONFIG_FILE"
+fi
+
+while :; do
+    menu_entry
+done
+
+die

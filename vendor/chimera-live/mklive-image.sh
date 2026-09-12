@@ -99,8 +99,8 @@ fastfetch feh gettext htop inxi imagemagick mousepad mpv \
 musl-locales nano smartmontools transmission ufw unzip usbutils \
 vim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
 chimera-repo-user \
-chimera-install-scripts \
-h77-dots h77-sway-dots h77-installer"
+dialog \
+h77-dots h77-sway-dots h77-installer h77-install-scripts"
         # waybar (`user` tier -- real, confirmed 2026-09-12, corrects
         # this project's own earlier "doesn't exist" mistake) replaces
         # yambar: real bugs found on real hardware (hardcoded BAT0,
@@ -123,10 +123,15 @@ h77-dots h77-sway-dots h77-installer"
         # can't resolve that (see the template.py comment), so this is
         # the reliable equivalent.
         #
-        # chimera-install-scripts (`main`) + h77-installer: the start
-        # of the disk-installer side, 2026-09-12 -- a thin wrapper
-        # around the real chimera-installer/chimera-bootstrap, not a
-        # custom installer. See pkg/h77-installer/template.py.
+        # h77-installer + h77-install-scripts: the disk-installer side,
+        # 2026-09-12 -- a thin wrapper (h77-installer) around this
+        # project's own patched fork of chimera-installer/
+        # chimera-bootstrap (h77-install-scripts, replaces the real
+        # `chimera-install-scripts` package entirely), which adds real
+        # interactive groups/services checklists -- see both packages'
+        # own template.py. `dialog` is listed explicitly here since it
+        # was previously pulled in transitively via the real
+        # chimera-install-scripts package's own depends=.
         #
         # 2026-09-12 night: full cross-check against d77void's own real
         # sway package list (mkd77.sh's D77_CORE + sway-specific PKGS,
