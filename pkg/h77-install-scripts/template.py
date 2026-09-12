@@ -27,6 +27,24 @@
 # entries with no reliable way to tell them apart from real standalone
 # services).
 #
+# 2026-09-13: three more real gaps closed, same "check against
+# void-installer's real source, delegate to a real tool instead of
+# reimplementing" principle -- disk partitioning (menu_hybrid_partition,
+# pure cfdisk delegation, no custom partition-table code, same as
+# void-installer's own menu_partitions), a filesystem/mountpoint
+# assignment + format/mount step (menu_hybrid_filesystems, a close
+# port of void-installer's own menu_filesystems + create_filesystems
+# -- DESTRUCTIVE, every format is behind its own explicit
+# per-partition confirmation naming the device), network configuration
+# (menu_hybrid_network, delegates to NetworkManager's own real nmtui),
+# and console keymap selection (menu_hybrid_keymap, confirmed Chimera's
+# own patched console-setup uses the exact same KMAP= convention
+# void-installer already assumes, no translation needed). Caught one
+# real bashism this way, not guessed: `done < <(sort ...)` (process
+# substitution) doesn't parse under chimerautils' own /bin/sh --
+# confirmed by running `sh -n` with /bin/sh being real dash on the dev
+# host, same POSIX-strict class of shell -- fixed to a real temp file.
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --

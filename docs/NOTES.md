@@ -767,3 +767,98 @@ asked for a few small follow-ups:
 - **vim -> neovim**: real package, `user` tier, user's own request.
 
 Not yet rebuilt/tested against a real boot at the time of writing.
+
+## 2026-09-13, later :: partitioning, filesystems, network, keymap ported from void-installer
+
+User's direct ask: "há várias coisas no void-installer que não
+aparecem no chimera-installer e fazem falta como, reparticionamento
+do disco, network, keyboard map...podes ver a lógica no
+void-installer e trazer para o chimera?" -- confirmed all three
+genuinely absent from `chimera-installer` first (grepped its own real
+source: no `parted`/`fdisk`/`cfdisk`/`mkfs` anywhere, "Network" only
+ever appears as a `SOURCE` value not a config step, no
+`loadkeys`/`keymap` reference at all), then read void-installer's own
+real implementations in full before porting anything.
+
+**Network** (`menu_hybrid_network`): void-installer's own
+`menu_network`, when NetworkManager is the running service, just
+hands off to it rather than doing its own wpa_supplicant/dhcpcd setup.
+This project always has NetworkManager, so the direct port is simply
+launching `nmtui-connect` (confirmed a real binary the `networkmanager`
+package itself ships, not a separate `nmtui` package -- read its
+template.py directly). New top-level menu item, right after Source.
+
+**Keymap** (`menu_hybrid_keymap`): scans `/usr/share/kbd/keymaps` for
+`*.map.gz` (same as void-installer's own `menu_keymap`), applies
+immediately via `loadkeys`, and for target persistence writes
+`/etc/default/keyboard`'s `KMAP=` line during `menu_install`. Checked
+whether this needed translating to Chimera's own convention first,
+rather than assuming void-installer's raw-kbd-keymap approach would
+transfer directly -- it does: Chimera's own `console-setup` is
+patched (`main/console-setup/patches/no-default-xkb.patch`, read
+directly) specifically to make `KMAP=<name>` (still "suitable as
+input for loadkeys(1)", per that patch's own man page diff) the
+default over XKB layout codes, matching void-installer's convention
+exactly, not a mismatch to bridge.
+
+**Partition** (`menu_hybrid_partition`): pure delegation to `cfdisk`
+on a user-picked disk -- exactly void-installer's own safest pattern
+(its `menu_partitions` just execs cfdisk/fdisk directly too, no
+custom partition-table code of its own either). `cfdisk` comes from
+`util-linux-fdisk` (confirmed subpackage of `main/util-linux`, glob
+`usr/bin/*fdisk` covers fdisk/cfdisk/sfdisk together), already
+present via `base-full-fs`.
+
+**Filesystems** (`menu_hybrid_filesystems`) -- the piece that actually
+formats and mounts, a close port of void-installer's own
+`menu_filesystems` + `create_filesystems`. Loops over real system
+partitions (`lsblk -pno NAME,TYPE`), for each one picked: filesystem
+type (ext2/3/4, btrfs, xfs, f2fs, vfat, swap), a mountpoint, and an
+explicit per-partition **DESTRUCTIVE** confirmation naming the exact
+device before any `mkfs`/`mkswap` runs -- "Answer No to reuse
+whatever is already there" preserved from void-installer's own
+option to not reformat. Same defensive touches void-installer's real
+`create_filesystems` has: `swapoff` before `mkswap`, `modprobe
+<fstype>` before each `mkfs`.
+
+One real architectural difference from void-installer forced a design
+change, not just a straight port: void-installer defers all
+mkfs/mount to its own install step, because it has no earlier gate
+requiring a pre-mounted target. `chimera-installer`'s own `SystemRoot`
+step, by contrast, requires `mountpoint -q "$sysroot"` to already be
+true before it accepts a path (confirmed against its real source) --
+so this formats and mounts immediately when Filesystems is confirmed,
+at a fixed `/mnt/root`, then calls `config_set SYSROOT "/mnt/root"`
+so the very next SystemRoot screen is already pre-validated. `genfstab`
+(vendored unmodified, already called later in `menu_install`) picks up
+whatever ends up mounted under `$sysroot` automatically -- no manual
+UUID/fstab writing needed here, unlike void-installer's own
+`create_filesystems`, which hand-writes fstab entries itself because
+void-mklive has no equivalent tool.
+
+**Real bug caught by actually running `sh -n`, not guessed**: the
+first draft used `done < <(sort -k4 "$HD77_FS_FILE")` (process
+substitution) in two places -- a bashism. `chimera-installer`'s own
+shebang is `#!/bin/sh`, and confirmed this session already (the
+`h77-dots`/`h77-sway-dots` sysusers work) that Chimera's own `/bin/sh`
+is chimerautils' minimal sh, not bash. Caught it locally: this dev
+host's own `/bin/sh` is real `dash` (`ls -la /bin/sh` confirms), the
+same POSIX-strict class of shell, and `sh -n` on the patched file
+failed with exactly the error that class of shell would give. Fixed
+by sorting into a real temp file first (`$HD77_FS_FILE.sorted`)
+instead.
+
+Wired into the top-level menu in this order: Source -> **Network** ->
+Mirror -> Hostname -> Timezone -> **Keymap** -> RootPassword ->
+UserAccount -> **Partition** -> **Filesystems** -> SystemRoot ->
+Kernel -> Packages -> Bootloader -> Install.
+
+### Still open -- the most consequential untested piece so far
+
+None of Partition/Filesystems has been run against a real disk yet --
+only `sh -n` syntax-checked and read carefully against void-installer's
+own real, field-tested logic. This is genuinely destructive
+functionality (`mkfs`/`mkswap` on a real device) in a way nothing
+else patched into chimera-installer so far has been. Next real
+install test should go through Partition -> Filesystems -> SystemRoot
+on a real or spare disk before trusting this unattended.
