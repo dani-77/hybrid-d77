@@ -925,17 +925,25 @@ menu_hybrid_network() {
 # (main/console-setup/patches/no-default-xkb.patch in cports), to use
 # the exact same convention: /etc/default/keyboard's KMAP= line takes
 # "the console keymap that is suitable as input for loadkeys(1)" --
-# the same raw kbd keymap names, not XKB layout codes. So this ports
-# directly, no translation needed between the two conventions.
+# the same raw kbd keymap names, not XKB layout codes. So the KMAP=
+# convention ports directly, no translation needed -- but the actual
+# keymaps directory does NOT: Void's own /usr/share/kbd/keymaps was
+# ported without checking it against Chimera's real kbd package layout
+# first, and it's wrong -- confirmed the hard way (user's own real
+# test: "aparece erro de is kbd installed?"), then confirmed why by
+# re-reading kbd's real template.py: its own post_install uninstalls
+# unwanted keymap sets from "usr/share/keymaps/{sun,amiga,...}" --
+# i.e. Chimera's real path is /usr/share/keymaps, with no extra "kbd/"
+# component at all.
 menu_hybrid_keymap() {
     local _hd77_km _hd77_list _hd77_sel
     _hd77_list=""
-    for _hd77_km in $(find /usr/share/kbd/keymaps -type f -iname '*.map.gz' 2>/dev/null \
+    for _hd77_km in $(find /usr/share/keymaps -type f -iname '*.map.gz' 2>/dev/null \
         | sed -e 's|.*/||' -e 's|\.map\.gz$||' | sort -u); do
         _hd77_list="$_hd77_list $_hd77_km $_hd77_km"
     done
     if [ -z "$_hd77_list" ]; then
-        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} no keymaps found under /usr/share/kbd/keymaps (is kbd installed?)" 8 70
+        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} no keymaps found under /usr/share/keymaps (is kbd installed?)" 8 70
         return 1
     fi
     ui_dialog --no-tags --menu "Select your console keymap:" 20 60 14 $_hd77_list

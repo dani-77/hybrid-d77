@@ -900,3 +900,24 @@ Not yet rebuilt into a tested ISO at the time of writing -- queued
 for the next build round, after the user's own real-disk test of
 Partition/Filesystems (already running as a build without this fix,
 since it was mid-flight when this was found).
+
+## 2026-09-13, real Toshiba boot :: Keymap path was wrong
+
+First real test of the disk/network/keymap ISO (Toshiba laptop).
+Keymap immediately failed: "no keymaps found ... is kbd installed?"
+`kbd` genuinely was installed (confirmed: `base-full-console` ->
+`console-setup` -> `kbd`, all real deps in this project's own package
+chain) -- the bug was the path. `menu_hybrid_keymap` had ported
+void-installer's own `/usr/share/kbd/keymaps` directly without
+checking it against Chimera's real `kbd` package layout first.
+Re-reading `kbd`'s actual `template.py` (its `post_install` uninstalls
+unwanted keymap sets from `usr/share/keymaps/{sun,amiga,atari,
+i386/olpc}`) confirms Chimera's real path is `/usr/share/keymaps`,
+with no extra `kbd/` path component at all -- fixed.
+
+A reminder that porting void-installer's *logic* (which was sound) is
+not the same as porting its *paths* without checking them against the
+target distro -- this is the second time this exact class of mistake
+has shown up (the first was the swaylock lock-image path, ported
+verbatim from d77void's own `~/Wallpaper/` convention this project
+never creates). Not yet rebuilt/retested at the time of writing.

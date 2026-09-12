@@ -56,6 +56,16 @@
 # kept only on ui_programbox (its real, deliberate purpose there: keep
 # the install log in the terminal's own scrollback).
 #
+# Real ISO test (Toshiba), user report: Keymap immediately errored
+# "no keymaps found ... is kbd installed?". kbd WAS installed
+# (confirmed: base-full-console -> console-setup -> kbd, all real
+# deps), the path was wrong -- menu_hybrid_keymap ported Void's own
+# /usr/share/kbd/keymaps without checking it against Chimera's real
+# kbd package layout first. Re-read kbd's actual template.py: its own
+# post_install uninstalls unwanted keymap sets from
+# "usr/share/keymaps/{sun,amiga,...}" -- Chimera's real path is
+# /usr/share/keymaps, no "kbd/" component. Fixed.
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --
