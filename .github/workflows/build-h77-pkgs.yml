@@ -56,6 +56,16 @@ jobs:
 
       - name: Build h77-dots / h77-sway-dots / h77-installer
         run: |
+          # The container's "builder" user is a fixed uid 1000
+          # (container/cbuild.Containerfile), chosen to match a local
+          # dev host's own uid by convention -- the GH Actions runner
+          # user is a different uid, so the checkout it owns isn't
+          # writable by uid 1000 inside the container. Confirmed the
+          # hard way: "mkdir: /src/cbuild-out: Permission denied".
+          # Pre-create cbuild-out with the right ownership so the
+          # container only needs to write into it, not create it.
+          mkdir -p cbuild-out
+          sudo chown -R 1000:1000 cbuild-out
           docker run --rm --privileged --security-opt label=disable \
             -v "$PWD:/src" -w /src hybrid-d77-cbuild
 
