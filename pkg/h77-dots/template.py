@@ -41,9 +41,15 @@ pkgname = "h77-dots"
 pkgver = "0.1.0"
 pkgrel = 0
 build_style = "meta"
-pkgdesc = "hybrid-d77 general app dotfiles (/etc/skel): foot, alacritty, kitty, qt5ct/qt6ct, kvantum"
-license = "MIT"
+pkgdesc = "General app dotfiles for hybrid-d77"
+license = "custom:meta"
 url = "https://github.com/dani-77/hybrid-d77"
+# We genuinely install straight into /etc (skel content + motd), which
+# cbuild's own lint flags by default ("'/etc' exists, verify if this
+# is necessary and then set the 'etcfiles' option") -- confirmed the
+# real syntax against real templates (main/zsh, main/mc, ...), it's a
+# list of option names, not a dict/bool.
+options = ["etcfiles"]
 
 
 def install(self):
@@ -58,5 +64,12 @@ def install(self):
     # guessed -- see docs/NOTES.md.
     self.install_files(self.template_path / "skel", "etc")
 
-    self.install_file(self.files_path / "50-udisks.rules", "etc/polkit-1/rules.d")
+    # cports' lint insists vendor-shipped polkit rules go under
+    # /usr/share, not /etc (/etc/polkit-1/rules.d is meant for local
+    # admin overrides) -- polkit itself reads both dirs, so this is a
+    # pure packaging-convention fix, not a behavior change. Confirmed
+    # against the real lint hook's own message, not guessed.
+    self.install_file(
+        self.files_path / "50-udisks.rules", "usr/share/polkit-1/rules.d"
+    )
     self.install_file(self.files_path / "motd", "etc")

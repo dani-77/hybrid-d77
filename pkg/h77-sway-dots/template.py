@@ -38,10 +38,13 @@ pkgname = "h77-sway-dots"
 pkgver = "0.1.0"
 pkgrel = 0
 build_style = "meta"
-pkgdesc = "hybrid-d77 sway session dotfiles (/etc/skel): sway, swaylock, swaync, yambar"
-license = "MIT"
+pkgdesc = "Sway session dotfiles for hybrid-d77"
+license = "custom:meta"
 url = "https://github.com/dani-77/hybrid-d77"
 depends = ["h77-dots"]
+# Same reasoning as h77-dots: we genuinely install straight into
+# /etc/skel, cbuild's lint needs that acknowledged explicitly.
+options = ["etcfiles"]
 
 
 def install(self):

@@ -1,15 +1,12 @@
 #!/bin/sh
 # Runs inside the hybrid-d77 build container (rootful, --privileged).
 # Builds hybrid-d77's own "sway" variant (see iso/mklive-d77.sh and
-# vendor/chimera-live/mklive-image.sh's "sway" case).
-#
-# EXPECTED TO FAIL as of 2026-09-12: h77-dots/h77-sway-dots (pkg/) are
-# not built as real .apk files yet -- that needs a real cports/cbuild
-# checkout + toolchain bootstrap, not done. This run's real purpose is
-# to confirm every OTHER package name resolves (sway, yambar, udiskie,
-# etc, all verified individually already -- this is the first time
-# they're all requested together in one transaction) and see exactly
-# where it stops.
+# vendor/chimera-live/mklive-image.sh's "sway" case), with the real
+# h77-dots/h77-sway-dots packages baked in -- run
+# container/cbuild.Containerfile first (separately, needs its own
+# --privileged run for a different reason: bwrap's nested mount()
+# calls) to produce cbuild-out/hybrid/, which iso/mklive-d77.sh
+# requires and refuses to run without.
 set -eu
 cd /src
 

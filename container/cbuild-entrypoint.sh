@@ -29,6 +29,40 @@ if ! ls etc/keys/*.rsa >/dev/null 2>&1; then
 	./cbuild keygen
 fi
 
+# cbuild refuses to build from any category outside etc/config.ini's
+# [build] categories setting ("main user" by default) -- confirmed the
+# hard way: "h77-dots-0.1.0-r0: ERROR: cannot be built, disallowed by
+# cbuild (not in main, user)". The example config's own comment says
+# "custom categories are not supported! the mechanism though which
+# they work is an implementation detail subject to change at any
+# time" -- true for upstream contributions, fine for our own local-only
+# build. Widen it to include "hybrid" here rather than editing a
+# tracked cports file (this whole checkout is throwaway/untracked).
+# Also disables the linter/formatter enforcement (flake8+black/ruff):
+# neither is installed here and both are "enforced unless set to none"
+# per config.ini.example -- confirmed the hard way, "could not
+# determine template linter". Fine for our own two trivial meta
+# packages; upstream contributions would need the real tools.
+#
+# Done via Python's configparser, not sed -- chimerautils' sed is BSD
+# sed, not GNU sed, and its -i/`a` syntax differ enough (confirmed the
+# hard way: "invalid command code e") that a portable edit is simpler
+# than chasing BSD-sed quoting. Runs AFTER keygen on purpose: keygen
+# itself creates/rewrites etc/config.ini with the [signing] section,
+# and this must not race or get clobbered by that.
+python3 - <<'PYEOF'
+import configparser
+cfg = configparser.ConfigParser()
+cfg.read("etc/config.ini")
+if not cfg.has_section("build"):
+    cfg.add_section("build")
+cfg.set("build", "categories", "main user hybrid")
+cfg.set("build", "linter", "none")
+cfg.set("build", "formatter", "none")
+with open("etc/config.ini", "w") as f:
+    cfg.write(f)
+PYEOF
+
 if [ ! -d bldroot ]; then
 	echo ">> bootstrapping the build root (binary bootstrap, not"
 	echo "   source-bootstrap -- we don't need to rebuild the whole"
