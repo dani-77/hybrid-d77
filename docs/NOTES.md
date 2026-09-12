@@ -371,6 +371,31 @@ exactly what `iso/mklive-d77.sh` already expects --
 `cbuild-out/hybrid/x86_64/` + `cbuild-out/*.rsa.pub`). Triggers on
 `workflow_dispatch` or a push touching `pkg/**`.
 
+**Confirmed working end to end** after three real failures, each fixed
+by an actual CI run, not guessed:
+1. `--privileged` on the container alone wasn't enough --
+   `ubuntu-latest` runners are Ubuntu 24.04, which restricts
+   unprivileged user namespace creation via an AppArmor policy at the
+   HOST kernel level (a property of the runner VM, not something a
+   container flag overrides from inside). Fixed with `sudo sysctl -w
+   kernel.apparmor_restrict_unprivileged_userns=0` on the runner,
+   before building.
+2. `mkdir: /src/cbuild-out: Permission denied` -- the container's
+   `builder` user is a fixed uid 1000 (chosen to match a local dev
+   host's own uid by convention), but the GH Actions runner's own
+   checkout is owned by a different uid, so 1000 couldn't create a new
+   directory there. Fixed by pre-creating `cbuild-out` and `chown -R
+   1000:1000` before running the container.
+3. `SHA256SUMS: Permission denied` in the very next step -- the fix
+   above left `cbuild-out` owned by 1000, so the runner's own user
+   (running the Checksum step) couldn't write into it either. Fixed by
+   `chown`ing it back to the runner's own uid right after the
+   container exits.
+
+First real run published `h77-pkgs` cleanly: all three `.apk`s,
+`APKINDEX.tar.gz`, the signing pubkey, `SHA256SUMS`. `gh release view
+h77-pkgs --repo dani-77/hybrid-d77` confirms it.
+
 ### Original note (superseded by the above, kept for context)
 
 User's own idea, same pattern already proven in `d77crux-live` for
