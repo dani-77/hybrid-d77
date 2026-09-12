@@ -79,7 +79,7 @@ bar:
           map:
             conditions:
               muted: {string: {text: "mute", foreground: 6c7086ff, on-click: "amixer -q sset Master toggle"}}
-              ~muted: {string: {text: "vol {volume}%", foreground: cdd6f4ff, on-click: "amixer -q sset Master toggle"}}
+              ~muted: {string: {text: "vol {percent}%", foreground: cdd6f4ff, on-click: "amixer -q sset Master toggle"}}
 
     - battery:
         name: BAT0

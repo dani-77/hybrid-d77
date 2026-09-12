@@ -42,7 +42,21 @@ Chimera_User() {
             "/lib/live/data/issue.in" > /root/etc/issue
     fi
 
-    chroot /root useradd -m -c "$USERNAME" -s "$USERSHELL" "$USERNAME"
+    # hybrid-d77 patch (2026-09-12): upstream's own useradd here has no
+    # -G at all, so the live user gets NO supplementary groups -- not
+    # even "network", which NetworkManager's own shipped polkit rule
+    # grants wholesale to anyone in that group (confirmed by reading
+    # main/networkmanager/files/50-org.freedesktop.NetworkManager.rules
+    # in cports). "network" is one of Chimera's own default base-install
+    # groups (confirmed against a real build log), so it always exists.
+    # "storage" (udiskie's auto-mount, see h77-dots' 50-udisks.rules)
+    # is NOT a default group -- h77-dots creates it via sysusers at
+    # build time, so it only exists on images that installed h77-dots;
+    # added separately, after useradd, so a build without h77-dots
+    # doesn't fail here (2>/dev/null || true).
+    chroot /root useradd -m -c "$USERNAME" -s "$USERSHELL" -G network "$USERNAME"
+
+    chroot /root usermod -aG storage "$USERNAME" 2>/dev/null || true
 
     chroot /root sh -c "echo 'root:${USERPASS}'|chpasswd -c SHA512"
     chroot /root sh -c "echo '$USERNAME:${USERPASS}'|chpasswd -c SHA512"

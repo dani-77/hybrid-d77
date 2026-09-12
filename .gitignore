@@ -10,3 +10,4 @@ vendor/chimera-live/apk-cache/
 # tracked (the signing key changes every bootstrap).
 /cbuild-out/
 /iso/.keys/
+__pycache__/

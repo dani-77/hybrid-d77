@@ -6,9 +6,15 @@
 #
 # Sources (all read-only references, copied in on 2026-09-12):
 #   - alacritty, kitty, qt5ct, qt6ct, Kvantum: ~/d77void/common/config/
-#   - foot: ~/d77devuan/pkg/d77-sway-skel/skel/.config/foot
-#     (d77void has no foot config of its own; Devuan's was the closest
-#     match, foot being the sway-family terminal of choice there too)
+#   - foot: ~/d77devuan/pkg/d77-sway-skel/skel/.config/foot (font
+#     switched to Hack, matching fuzzel.ini's own font=hack below)
+#   - fuzzel: ~/d77void/common/fuzzel_c/fuzzel/fuzzel.ini (terminal=
+#     fixed from kitty to foot -- kitty was never actually in this
+#     project's own package list to begin with)
+#   - files/fuzzel-power-menu: ~/d77void/common/fuzzel_c/fuzzel-power-menu,
+#     installed to /usr/bin -- a real #!/usr/bin/env bash script (see
+#     depends= below), used by h77-sway-dots' sway config (`bindsym
+#     $mod+x exec fuzzel-power-menu`, unmodified from d77void's own).
 #   - backgrounds/d77.png (the wallpaper): ~/d77devuan/pkg/d77-sway-skel/
 #     skel/.config/backgrounds -- referenced by h77-sway-dots' sway
 #     config via `output * bg ~/.config/backgrounds/d77.png fill`, so it
@@ -16,26 +22,34 @@
 #     package -- any future non-sway variant gets the same wallpaper too.
 #   - files/50-udisks.rules: ~/d77void/common/50-udisks.rules (the same
 #     rule ported to obarun/arch/devuan/alpine earlier this project --
-#     grants org.freedesktop.udisks(2).* to the `storage` group. Needed
-#     even though Chimera DOES have real udiskie (confirmed 2026-09-12,
-#     under the `user` repo tier -- an earlier pass here wrongly said it
-#     didn't exist, only checked `main`) -- `udiskie -a`'s non-interactive
-#     auto-mount fails NotAuthorized without this rule, same as every
-#     other d77 variant.
+#     grants org.freedesktop.udisks(2).* to the `storage` group.
 #   - files/motd: shown at login, documents the anon/chimera and
 #     root/chimera credentials -- no greeter needed (see h77-sway-dots'
 #     .profile for the reasoning: Void's and Chimera's own convention,
 #     the user's own call, even though greetd IS packaged here too).
 #
-# TODO not done yet:
-#   - `storage` group: needs creating + the installing user added to it,
-#     same as every other distro in this family -- belongs in the
-#     mklive-image.sh sway variant's own setup, not here (this package
-#     doesn't run anything at install time, `build_style = "meta"`).
-#   - whether the `anon` user (and root's `chimera` password) need
-#     explicit creation by this project, or already exist by Chimera's
-#     own convention on official images -- not yet verified against
-#     an actual boot, taking the user's word for it for now.
+# `storage` group: Chimera's base install does NOT create one (its own
+# default groups -- adm, wheel, audio, video, network, ... -- confirmed
+# against a real build log -- have no "storage"), so this package
+# creates it via install_sysusers (runs as an apk install trigger, at
+# ISO-build time, well before the live-boot's own user creation runs).
+# `network` group DOES already exist by default -- no sysusers entry
+# needed for that one.
+#
+# CORRECTED 2026-09-12 late, the actual root cause of "anon has no
+# network permissions": chimera-live's own vendored live-boot script,
+# initramfs-tools/lib/live/boot/9990-chimera-user.sh, creates the live
+# user with a bare `useradd -m -c ... -s ... "$USERNAME"` -- NO -G at
+# all, so `anon` gets no supplementary groups whatsoever, not even
+# "network" (which NetworkManager's own shipped polkit rule grants
+# wholesale to anyone in that group -- main/networkmanager/files/
+# 50-org.freedesktop.NetworkManager.rules, confirmed by reading it).
+# Same story for `storage` and udiskie's auto-mount. Patched directly
+# in the vendored script (`-G network,storage`) rather than worked
+# around here -- there's no package-install-time hook that fires again
+# at every future boot to fix this after the fact, and the vendored
+# script is already precedented as a patch point (mklive-image.sh's
+# own "sway" case).
 
 pkgname = "h77-dots"
 pkgver = "0.1.0"
@@ -44,6 +58,15 @@ build_style = "meta"
 pkgdesc = "General app dotfiles for hybrid-d77"
 license = "custom:meta"
 url = "https://github.com/dani-77/hybrid-d77"
+# fuzzel-power-menu is a real #!/usr/bin/env bash script (confirmed by
+# reading it), not sh -- Chimera's default shell is plain /bin/sh.
+# NOT declared as depends=["bash"]: cbuild's own dependency resolution
+# insists on resolving every `depends` entry via a local TEMPLATE
+# (confirmed the hard way: "ERROR: template 'bash' cannot be resolved",
+# even though main/bash/template.py genuinely exists in the checkout --
+# a cbuild quirk/limitation, not investigated further). "bash" is
+# listed directly in mklive-image.sh's sway package set instead, which
+# works reliably and is functionally equivalent for our purposes.
 # We genuinely install straight into /etc (skel content + motd), which
 # cbuild's own lint flags by default ("'/etc' exists, verify if this
 # is necessary and then set the 'etcfiles' option") -- confirmed the
@@ -73,3 +96,13 @@ def install(self):
         self.files_path / "50-udisks.rules", "usr/share/polkit-1/rules.d"
     )
     self.install_file(self.files_path / "motd", "etc")
+    self.install_bin(self.files_path / "fuzzel-power-menu")
+
+    # files/storage.sysusers: "g storage -" (systemd-sysusers syntax,
+    # confirmed against a real cports package's own sysusers.conf,
+    # user/greetd/files/) creates the group with an auto-assigned GID;
+    # install_sysusers is cbuild's own real helper (confirmed against
+    # its source and greetd's own template.py, which uses it the same
+    # way, same files_path-relative pattern as every other install_*
+    # call in this file).
+    self.install_sysusers(self.files_path / "storage.sysusers")
