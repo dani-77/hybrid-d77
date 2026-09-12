@@ -3,9 +3,13 @@
 # Sway/swaylock/swaync dotfiles: ~/d77void/sway/skel/.config/{sway,
 # swaylock,swaync} (d77void already has its own "sway" variant -- this
 # is the closest, most direct match in the family). yambar/config.yml is
-# NEW, written from scratch for hybrid-d77 on 2026-09-12 (waybar isn't
-# packaged in Chimera at all, confirmed; yambar is, hence the switch --
-# the user's own call). Catppuccin-mocha palette kept in sync BY HAND
+# NEW, written from scratch for hybrid-d77 on 2026-09-12 -- yambar over
+# waybar is the user's own choice on its own merits, NOT because waybar
+# is unavailable: waybar exists in cports too (`user/waybar`, same tier
+# as udiskie/greetd), confirmed 2026-09-12 late after an earlier pass
+# here wrongly claimed it wasn't packaged at all -- corrects the exact
+# main-vs-user mistake already made once this session, see docs/NOTES.md.
+# Catppuccin-mocha palette kept in sync BY HAND
 # between sway/catppuccin-mocha (sway's native `set $var` colors) and
 # yambar/config.yml (plain hex, yambar can't read sway's variables).
 #

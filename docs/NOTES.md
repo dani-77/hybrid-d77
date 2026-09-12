@@ -210,9 +210,15 @@ Per the user's own 3-part plan, split into:
    *different* repo).
 2. **`pkg/h77-sway-dots`** -- sway/swaylock/swaync dotfiles (from
    `~/d77void/sway/skel/.config/*`, closest match in the family) plus a
-   brand-new `yambar/config.yml` (waybar isn't packaged in Chimera at
-   all -- confirmed, the user's own call to switch), `depends =
-   ["h77-dots"]`. `sway/config`'s `bar {}` block replaced with `exec
+   brand-new `yambar/config.yml`, `depends = ["h77-dots"]`. **Correction
+   2026-09-12 late, prompted by the user asking me to re-check**: waybar
+   is NOT actually missing from cports -- it exists as `user/waybar`,
+   same tier as udiskie/greetd. The original "waybar isn't packaged"
+   claim repeated the exact main-vs-user mistake already made once this
+   session (see the repo-tier correction below) and was wrong. yambar
+   stays -- the user's explicit call once this was pointed out -- but
+   for its own merits, not because waybar is unavailable.
+   `sway/config`'s `bar {}` block replaced with `exec
    yambar`; wallpaper line fixed to `~/.config/backgrounds/d77.png`.
    `.profile` (not `.bash_profile` -- Chimera's default shell is plain
    `/bin/sh`) execs `sway` on tty1 when no Wayland/X session is active.
