@@ -48,29 +48,28 @@ bar:
           - string: {text: "{time}", foreground: cdd6f4ff}
 
   right:
-    - removables:
+    - cpu:
+        poll-interval: 2000
         content:
           map:
             conditions:
-              ~mounted:
-                string: {text: "{label}", foreground: 6c7086ff, on-click: "udisksctl mount -b {device}"}
-              mounted:
-                string: {text: "{label}", foreground: 94e2d5ff, on-click: "udisksctl unmount -b {device}"}
-
-    - network:
-        content:
-          map:
-            default: {empty: {}}
-            conditions:
-              state == down:
-                string: {text: "no net", foreground: f38ba8ff}
-              state == up:
+              id < 0:
                 map:
                   default:
-                    string: {text: "{name}: {ipv4}", foreground: a6e3a1ff}
+                    string: {text: "cpu {cpu}%", foreground: cdd6f4ff}
                   conditions:
-                    ssid != "":
-                      string: {text: "{ssid}", foreground: a6e3a1ff}
+                    cpu >= 90:
+                      string: {text: "cpu {cpu}%", foreground: f38ba8ff}
+
+    - mem:
+        poll-interval: 2000
+        content:
+          map:
+            default:
+              string: {text: "ram {percent_used}%", foreground: cdd6f4ff}
+            conditions:
+              percent_used >= 90:
+                string: {text: "ram {percent_used}%", foreground: f38ba8ff}
 
     - alsa:
         card: default

@@ -20,19 +20,18 @@
 #
 # TODO not done yet:
 #   - yambar's exact module fields were checked against dnkl/yambar's
-#     own example-config.yml/test/full-conf-good.yml/laptop.conf
-#     (cloned fresh 2026-09-12), not guessed -- but never actually run
-#     through yambar itself (not installed on the dev host). Validate on
-#     first real boot.
-#   - `udiskie` IS real in cports (`user` repo tier, confirmed
-#     2026-09-12 -- corrects an earlier wrong "doesn't exist" note) and
-#     is what's actually used for auto-mount (`exec udiskie -a` in
-#     sway/config, already present from the d77void source config
-#     unmodified). yambar's `removables` module here is a secondary,
-#     manual `udisksctl mount/unmount`-on-click display -- redundant
-#     with udiskie for the common case, kept anyway as a visible/
-#     clickable fallback. Both need h77-dots' 50-udisks.rules plus the
-#     installing user in the `storage` group.
+#     own doc/*.scd (real, cloned from Codeberg -- GitHub doesn't
+#     mirror this repo), not guessed -- confirmed working on a real
+#     boot (2026-09-12 evening).
+#
+# 2026-09-12 evening, user request: the bar's `network`/`removables`
+# modules (visual ethernet/udisk display) swapped for `cpu`/`mem`
+# instead -- real auto-mount (`udiskie -a`, exec'd from sway/config,
+# unmodified from d77void) and real networking (NetworkManager) are
+# UNCHANGED, this only touches what the bar itself shows. `cpu`'s
+# `id < 0` condition is the module's own convention for "total across
+# all cores" (confirmed against yambar-modules-cpu.5.scd); `mem`'s
+# `percent_used` is a native tag, no computation needed.
 
 pkgname = "h77-sway-dots"
 pkgver = "0.1.0"
