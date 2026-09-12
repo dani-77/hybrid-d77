@@ -13,8 +13,18 @@
 #     (notably: NOT the package list -- local-source installs get
 #     h77-dots/h77-sway-dots for free via chimera-bootstrap's own
 #     local tar-copy of the live's rootfs, no apk/network involved).
-#   - files/h77-installer -> /usr/bin: `exec chimera-installer -c
-#     /etc/h77/installer.conf "$@"`, nothing more.
+#   - files/h77-installer -> /usr/bin: runs chimera-installer, then a
+#     small post-install fix-up (see files/post-install's own header
+#     comment for exactly why it's needed -- chimera-installer only
+#     ever adds the new user to "wheel" and has no services step at
+#     all, confirmed against its real source, unlike Void's own
+#     void-installer which has both a groups and a services checklist).
+#   - files/post-install -> /usr/lib/h77-installer/post-install: adds
+#     network/storage/audio/video to the installed user, enables the
+#     dinit services this desktop needs that don't self-enable
+#     (polkitd, networkmanager, seatd, rtkit, syslog-ng -- dbus and
+#     elogind already self-enable via their own templates'
+#     install_service(..., enable=True), confirmed by reading them).
 #
 # Kickoff of the disk-installer work, 2026-09-12 -- the live-ISO side
 # of this project was the priority until now ("o trabalho de instalar
@@ -45,4 +55,7 @@ options = ["etcfiles"]
 
 def install(self):
     self.install_bin(self.files_path / "h77-installer")
+    self.install_file(
+        self.files_path / "post-install", "usr/lib/h77-installer", mode=0o755
+    )
     self.install_file(self.files_path / "installer.conf", "etc/h77")

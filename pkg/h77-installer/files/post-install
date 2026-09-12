@@ -1,0 +1,63 @@
+#!/bin/sh
+# hybrid-d77 :: post-install fix-up for a target chimera-installer just
+# set up. Two things chimera-installer itself doesn't handle (confirmed
+# against its real source, src at chimera-linux/chimera-install-scripts):
+#
+#   1. Extra user groups. chimera-installer only ever runs
+#      `usermod -a -G wheel` on the user it creates -- nothing for
+#      network/storage/audio/video. Same root cause this project
+#      already hit and fixed for the LIVE user in
+#      vendor/chimera-live/initramfs-tools/.../9990-chimera-user.sh:
+#      NetworkManager's own shipped polkit rule
+#      (main/networkmanager/files/50-org.freedesktop.NetworkManager.rules)
+#      grants control to the "network" group wholesale, and udiskie's
+#      auto-mount needs "storage" (h77-dots' 50-udisks.rules + the
+#      "storage" group it creates via sysusers).
+#
+#   2. Enabling dinit services. chimera-installer has NO services step
+#      at all (Void's void-installer, by contrast, has both a groups
+#      and a services checklist -- see docs/NOTES.md). Enabling a
+#      dinit service system-wide means a symlink in
+#      $SYSROOT/etc/dinit.d/boot.d/ pointing at the service file
+#      (confirmed against cbuild's own install_service() helper, which
+#      does exactly this at usr/lib/dinit.d/boot.d/ INSIDE a package
+#      when its template passes enable=True -- dbus and elogind
+#      already self-enable that way, confirmed by reading their real
+#      templates; polkit, networkmanager, seatd (libseat-seatd), rtkit
+#      and syslog-ng do NOT, confirmed the same way, so this project
+#      has to do for the target what those templates don't do for
+#      themselves -- same thing 9990-chimera-user.sh already does
+#      manually for the LIVE session).
+#
+#   post-install <sysroot>
+set -eu
+
+SYSROOT="$1"
+
+# chimera-installer only ever creates exactly one non-root user
+# (confirmed against its source -- USERNAME/USERLOGIN is a single
+# value, there's no loop). Find it the same way useradd -m left it:
+# the one real home directory under $SYSROOT/home.
+target_user=$(
+	for d in "$SYSROOT"/home/*/; do
+		[ -d "$d" ] || continue
+		basename "$d"
+	done | head -1
+)
+
+if [ -n "${target_user:-}" ]; then
+	echo ">> adding $target_user to network,storage,audio,video"
+	chroot "$SYSROOT" usermod -aG network,storage,audio,video "$target_user" \
+		|| echo "!! usermod failed -- group(s) may not exist on this image" >&2
+else
+	echo "!! no user found under $SYSROOT/home -- skipping group fix-up" >&2
+fi
+
+echo ">> enabling services (only for what's actually installed)"
+mkdir -p "$SYSROOT/etc/dinit.d/boot.d"
+for svc in polkitd networkmanager seatd rtkit syslog-ng; do
+	if [ -f "$SYSROOT/usr/lib/dinit.d/$svc" ]; then
+		ln -sf "../$svc" "$SYSROOT/etc/dinit.d/boot.d/$svc"
+		echo "   + $svc"
+	fi
+done

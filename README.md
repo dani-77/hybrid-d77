@@ -4,7 +4,7 @@
 
 <h1 align="center">hybrid-d77</h1>
 
-<p align="center">Chimera Linux · <b>Sway</b> + yambar · <b>dinit</b> — live ISO (chimera-live).</p>
+<p align="center">Chimera Linux · <b>Sway</b> + Waybar · <b>dinit</b> — live ISO + installer.</p>
 
 ---
 
@@ -22,9 +22,14 @@
   to Void's name (also a real trademark-policy concern, not just taste).
 - Init is **dinit**, not OpenRC/systemd/s6 like the rest of the family —
   per-package dinit service files ship as `<pkg>-dinit` subpackages
-  (`greetd-dinit`, `udiskie-dinit`, `networkmanager-dinit`, ...).
-- **yambar**, not waybar — a deliberate choice, not a limitation: waybar
-  exists in cports too (`user/waybar`, same repo tier as udiskie/greetd).
+  (`greetd-dinit`, `udiskie-dinit`, `networkmanager-dinit`, ...), and not
+  every service self-enables on install (`dbus`, `elogind` do; `polkit`,
+  `networkmanager`, `seatd`, `rtkit`, `syslog-ng` don't) — see
+  `docs/NOTES.md` for what that means for the installer.
+- **Waybar**, ported from this project's own d77devuan config — an
+  earlier yambar config was tried first and dropped after real bugs
+  showed up on an actual boot (hardcoded battery name, unreliable
+  refresh, the wireless display vanishing outright).
 - No greeter/display-manager, even though `greetd` is packaged — Void's
   and Chimera's own convention: a plain `getty` `login:` prompt, with
   `/etc/motd` documenting the credentials, straight into Sway via
@@ -39,42 +44,52 @@ vendor/chimera-live/          vendored fork of chimera-linux/chimera-live
                                (mklive.sh/mklive-image.sh, the mkimage.sh
                                equivalent) -- GPLv3 as a whole, see its own
                                COPYING.md. Patched with a "sway" case in
-                               mklive-image.sh, every package name verified
-                               against the real repo (main + user tiers).
+                               mklive-image.sh (every package name verified
+                               against the real repo, main + user tiers)
+                               and a live-user group fix in initramfs-tools/
+                               .../9990-chimera-user.sh.
 pkg/h77-dots/                  general app dotfiles (/etc/skel): foot,
                                alacritty, kitty, qt5ct/qt6ct, Kvantum,
-                               the wallpaper, 50-udisks.rules, motd
-pkg/h77-sway-dots/              sway/swaylock/swaync/yambar dotfiles
+                               fuzzel + fuzzel-power-menu, the wallpaper,
+                               50-udisks.rules, motd
+pkg/h77-sway-dots/             sway/swaylock/swaync/waybar dotfiles
                                (/etc/skel), depends = ["h77-dots"]
+pkg/h77-installer/             thin wrapper around Chimera's own real
+                               chimera-installer, pre-loaded with this
+                               project's defaults, plus a post-install
+                               fix-up for groups/services chimera-installer
+                               itself doesn't handle (see docs/NOTES.md)
 iso/mklive-d77.sh              wrapper around vendor/chimera-live/mklive.sh,
-                               builds the "sway" variant (main + user repos)
-container/                     Containerfile + entrypoint -- builds an ISO
-                               via sudo podman, FROM Chimera's own official
-                               container image (Alpine's apk-tools can't
-                               read Chimera's package format at all)
+                               builds the "sway" variant (main + user repos,
+                               plus this project's own local package repo)
+container/                     Containerfile + entrypoint (builds the ISO)
+                               and cbuild.Containerfile + cbuild-entrypoint.sh
+                               (builds pkg/h77-* into real .apk files via
+                               cports/cbuild) -- both via sudo podman, FROM
+                               Chimera's own official container images
 docs/NOTES.md                  field notes -- read before touching the build
 ```
 
 ## Status
 
-The live ISO pipeline works end to end: an official, unmodified upstream
-GNOME ISO and a sway-variant test ISO have both been built (via
-`container/`) and booted from USB. What's left is building `h77-dots`/
-`h77-sway-dots` as real `.apk` packages through a `cports`/`cbuild`
-toolchain bootstrap, so a sway ISO ships the real d77 skel instead of
-upstream defaults — see `docs/NOTES.md` for the full field notes and
-current blockers.
-
-The disk-installer side is explicitly **not** in scope yet — the goal
-right now is a consistent, working **live** ISO first.
+Confirmed working end to end, live boot through a real disk install: the
+live ISO boots (tested on real hardware, not just QEMU), `doas
+h77-installer` installs to disk using Chimera's own real
+`chimera-installer`, and the installed system boots with Sway/Waybar
+running. See `docs/NOTES.md` for the full field notes, what's still
+rough (network-source installs, a couple of services worth double
+-checking), and the reasoning behind each design call.
 
 ## Reference / inspiration (not vendored, just studied)
 
 - [chimera-install-scripts](https://github.com/chimera-linux/chimera-install-scripts) —
-  `chimera-installer`/`chimera-chroot`, for whenever the installer side
-  gets built.
+  `chimera-installer`/`chimera-bootstrap`, which `pkg/h77-installer`
+  wraps rather than replaces.
 - [cports](https://github.com/chimera-linux/cports) — the package
   collection itself; every package name referenced here has been
   verified against it (both the `main` and `user` repo tiers).
+- [void-mklive](https://github.com/void-linux/void-mklive) — `void-installer`'s
+  own groups/services checklists were the reference point for figuring
+  out what `chimera-installer` doesn't do.
 
 ## Not affiliated with the Chimera Linux project.

@@ -1,0 +1,192 @@
+// -*- mode: jsonc -*-
+// hybrid-d77 waybar -- ported from d77devuan's own config (itself
+// generated from d77void/common/waybar/config.jsonc), unmodified apart
+// from the font (see style.css). 2026-09-12: replaces this project's
+// earlier yambar config -- yambar's `battery` module hardcoded BAT0
+// (breaks on laptops reporting BAT1), values didn't refresh reliably,
+// and the wireless network display stopped showing anything at all on
+// a real boot, despite the module being configured -- all three
+// confirmed on real hardware, not assumptions. waybar 0.15.0 (cports'
+// real version, `user` tier -- confirmed real, not "doesn't exist",
+// that was corrected earlier this session) auto-detects the battery
+// and doesn't hardcode a name.
+{
+    // "layer": "top", // Waybar at top layer
+    // "position": "bottom", // Waybar position (top|bottom|left|right)
+    "height": 30, // Waybar height (to be removed for auto height)
+    "margin-top": 10,
+    "margin-left": 10,
+    "margin-right": 10,
+    // "width": 1280, // Waybar width
+    "spacing": 2, // Gaps between modules (4px)
+    // Choose the order of the modules
+    "modules-left": [
+        "sway/workspaces",
+        "sway/mode",
+        "sway/scratchpad",
+        "sway/window",
+        "custom/media"
+    ],
+    "modules-center": [
+	"custom/weather",
+        "clock"
+    ],
+    "modules-right": [
+        "pulseaudio",
+        "network",
+        "cpu",
+        "memory",
+        "temperature",
+        "battery",
+        "backlight",
+        "keyboard-state",
+        "tray",
+        "custom/power"
+    ],
+
+    	"keyboard-state": {
+        "numlock": true,
+        "capslock": true,
+        "format": "{name} {icon}",
+        "format-icons": {
+            "locked": "",
+            "unlocked": ""
+        }
+    	},
+
+    	"sway/mode": {
+        "format": "<span style=\"italic\">{}</span>"
+    	},
+
+    	"sway/scratchpad": {
+        "format": "{icon} {count}",
+        "show-empty": false,
+        "format-icons": ["", ""],
+        "tooltip": true,
+        "tooltip-format": "{app}: {title}"
+    	},
+
+
+    	"idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": {
+            "activated": "",
+            "deactivated": ""
+        }
+    	},
+
+    	"tray": {
+        "icon-size": 14,
+        "spacing": 10
+    	},
+
+    	"clock": {
+        "timezone": "Europe/Lisbon",
+        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
+        "format": "{:%A, %d/%m/%Y  %H:%M }",
+    	},
+
+  	"cpu": {
+        "format": "{usage}% ",
+        "tooltip": false
+    	},
+
+    	"memory": {
+        "format": "{}% "
+    	},
+
+    	"temperature": {
+        // "thermal-zone": 2,
+        // "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
+        "critical-threshold": 80,
+        // "format-critical": "{temperatureC}°C {icon}",
+        "format": "{temperatureC}°C {icon}",
+        "format-icons": ["", "", ""]
+    	},
+
+    	"backlight": {
+        // "device": "acpi_video1",
+        "format": "{percent}% {icon}",
+        "format-icons": ["", "", "", "", "", "", "", "", ""]
+    	},
+
+    	"battery": {
+        "states": {
+            // "good": 95,
+            "warning": 30,
+            "critical": 15
+        },
+
+        "format": "{capacity}% {icon}",
+        "format-full": "{capacity}% {icon}",
+        "format-charging": "{capacity}% 󱎗",
+        "format-plugged": "{capacity}% ",
+        "format-alt": "{time} {icon}",
+        // "format-good": "", // An empty format will hide the module
+        // "format-full": "",
+        "format-icons": ["", "", "", "", ""]
+    	},
+
+
+    	"network": {
+        // "interface": "wlp2*", // (Optional) To force the use of this interface
+        "format-wifi": "{essid} ({signalStrength}%) ",
+        "format-ethernet": "{ipaddr}/{cidr} ",
+        "tooltip-format": "{ifname} via {gwaddr} 󰔣",
+        "format-linked": "{ifname} (No IP) 󰈀",
+        "format-disconnected": "Disconnected ⚠",
+        "format-alt": "{ifname}: {ipaddr}/{cidr}"
+    	},
+
+    	"pulseaudio": {
+        // "scroll-step": 1, // %, can be a float
+        "format": "{volume}% {icon} {format_source}",
+        "format-bluetooth": "{volume}% {icon} {format_source}",
+        "format-bluetooth-muted": "{icon} {format_source}",
+        "format-muted": "{format_source}",
+        "format-source": "{volume}% ",
+        "format-source-muted": "",
+        "format-icons": {
+            "headphone": "",
+            "phone": "",
+            "portable": "",
+            "car": "",
+            "default": ["", "", ""]
+        },
+        "on-click": "pavucontrol"
+    	},
+
+    	"custom/media": {
+        "format": "{icon} {}",
+        "return-type": "json",
+        "max-length": 40,
+        "format-icons": {
+            "spotify": "",
+            "default": "🎜"
+        },
+        "escape": true,
+        "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
+        // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
+    	},
+
+
+
+    	"sway/language": {
+    	"format-pt": "[pt]",
+    	"on-click": "swaymsg input type:keyboard xkb_switch_layout next"
+  	},
+
+    	"custom/power": {
+		"format": "⏻ ",
+		"tooltip": false,
+		"on-click": "fuzzel-power-menu"
+	},
+
+	"custom/weather": {
+    	"exec": "~/.config/waybar/wittr.sh",
+    	"return-type": "json",
+    	"format": "{}",
+    	"tooltip": true,
+    	"interval": 900
+	},
+}

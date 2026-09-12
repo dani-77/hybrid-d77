@@ -304,12 +304,14 @@ bindsym $mod+r mode "resize"
 
 # Status Bar:
 #
-# hybrid-d77 uses yambar, not swaybar -- see
-# ~/.config/yambar/config.yml (same catppuccin-mocha palette, kept in
-# sync by hand since yambar can't read sway's `set $var` colors).
+# hybrid-d77 uses waybar, not swaybar -- see ~/.config/waybar/config +
+# style.css, ported from d77devuan's own real config (which this
+# project already uses elsewhere in the d77 family). 2026-09-12:
+# replaces an earlier yambar config that shipped real bugs on real
+# hardware (hardcoded BAT0, unreliable value refresh, the wireless
+# network display vanishing outright) -- see docs/NOTES.md.
 # status.sh (swaybar's status_command) is no longer used; kept in this
-# directory only as a reference for which values yambar's modules needed
-# to cover (volume, network, battery, cpu, mem, clock).
-exec yambar
+# directory only as a historical reference.
+exec waybar
 
 include /etc/sway/config.d/*

@@ -1,9 +1,42 @@
 #!/bin/sh
 # hybrid-d77 :: thin wrapper around Chimera's own chimera-installer,
-# pre-loaded with this project's defaults (see /etc/h77/installer.conf).
-# Not a custom installer -- chimera-installer does all the real work
-# (partitioning, bootstrap, user creation, bootloader); this only saves
-# re-typing the same answers every time. Needs root -- run via doas
-# (opendoas is Chimera's own default, part of base-full-misc; there is
-# no `sudo` package in this image unless someone adds one by hand).
-exec chimera-installer -c /etc/h77/installer.conf "$@"
+# pre-loaded with this project's defaults (see /etc/h77/installer.conf),
+# plus a small post-install fix-up chimera-installer itself does NOT
+# do: extra user groups (it only ever adds "wheel", confirmed against
+# its real source) and enabling the dinit services this desktop
+# actually needs (it has no services step at all, unlike Void's own
+# void-installer, which has both a groups and a services checklist --
+# see docs/NOTES.md for the full comparison). Needs root -- run via
+# doas (opendoas is Chimera's own default, part of base-full-misc;
+# there is no `sudo` package in this image unless someone adds one).
+#
+# NOT `exec`'d (unlike the first version of this file): exec would
+# replace this whole process with chimera-installer's, meaning nothing
+# here could run once it exits.
+#
+#   doas h77-installer                # SystemRoot left at chimera-installer's
+#                                      # own default suggestion, /mnt/root
+#   doas h77-installer /mnt/whatever  # if you typed a different SystemRoot
+#                                      # inside the installer, pass it here
+#                                      # too so the fix-up finds it
+set -eu
+
+SYSROOT="${1:-/mnt/root}"
+
+chimera-installer -c /etc/h77/installer.conf
+
+if mountpoint -q "$SYSROOT" 2>/dev/null && [ -f "$SYSROOT/etc/passwd" ]; then
+	echo ""
+	echo ">> hybrid-d77: applying post-install fix-up at $SYSROOT"
+	/usr/lib/h77-installer/post-install "$SYSROOT"
+else
+	cat <<EOF
+
+!! $SYSROOT isn't a mounted, installed system -- skipping the
+   hybrid-d77 post-install fix-up (extra user groups, enabling
+   networkmanager/polkitd/seatd/rtkit/syslog-ng). If you installed to
+   a different SystemRoot inside chimera-installer, run it by hand:
+
+     doas /usr/lib/h77-installer/post-install <your-sysroot>
+EOF
+fi

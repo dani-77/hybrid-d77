@@ -80,9 +80,10 @@ case "$IMAGE" in
         # base-full -> base-full-core -> base-bootstrap, confirmed
         # against real templates; chimera-repo-user does not, nothing
         # else pulls it in).
-        PKGS="${BASE_PKGS} sway swaybg swaylock swayidle yambar \
+        PKGS="${BASE_PKGS} sway swaybg swaylock swayidle waybar \
 foot brightnessctl grim slurp wl-clipboard \
-fuzzel fonts-hack-ttf bash \
+fuzzel fonts-hack-ttf fonts-nerd-hack bash \
+playerctl python-gobject curl firefox \
 elogind libseat-seatd libseat-seatd-dinit \
 dbus dbus-dinit polkit polkit-dinit \
 networkmanager networkmanager-dinit \
@@ -92,6 +93,18 @@ udisks udiskie udiskie-dinit \
 chimera-repo-user \
 chimera-install-scripts \
 h77-dots h77-sway-dots h77-installer"
+        # waybar (`user` tier -- real, confirmed 2026-09-12, corrects
+        # this project's own earlier "doesn't exist" mistake) replaces
+        # yambar: real bugs found on real hardware (hardcoded BAT0,
+        # unreliable refresh, the wireless display vanishing outright),
+        # see docs/NOTES.md. fonts-nerd-hack (`user`) is a SEPARATE
+        # package from fonts-hack-ttf (`main`, used by foot) -- it's
+        # the nerd-fonts-patched variant with the icon glyphs waybar's
+        # config actually uses; plain Hack has no icon codepoints.
+        # playerctl + python-gobject: h77-sway-dots' waybar
+        # custom/media module (mediaplayer.py) needs both (MPRIS +
+        # the `gi` Python module it imports). curl: wittr.sh (the
+        # custom/weather module). firefox: user request.
         # fuzzel is `user` tier too (fine, we already need -r user for
         # udiskie/greetd/seatd). fonts-hack-ttf is `main`. bash is
         # needed for fuzzel-power-menu (h77-dots), a real

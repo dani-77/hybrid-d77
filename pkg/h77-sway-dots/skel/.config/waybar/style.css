@@ -1,0 +1,97 @@
+/* hybrid-d77 waybar -- ported from d77devuan (pkg/d77-sway-skel/skel/
+   .config/waybar), which itself ported from d77void. hybrid-d77
+   adjustment: font-family -> Hack Nerd Font (fonts-nerd-hack, cports
+   `user` tier -- the plain fonts-hack-ttf this project already uses
+   for foot has no icon glyphs, a separate nerd-fonts-patched package
+   is needed for waybar's icon codepoints to render at all). */
+
+@import "./d77.css";
+
+* {
+    font-family: "Hack Nerd Font", "HackNerdFont", "Hack", monospace;
+    font-size: 10px;
+    font-weight: 500;
+    min-height: 16px;
+    margin-left: 5px;
+    margin-right: 5px;
+}
+
+/* BAR FEATURES */
+
+window#waybar {
+    background: rgba(30, 30, 30, 0.9);
+    color: @purple;
+    border-radius: 20px;
+    padding: 5px 10px;
+    margin: 0px;
+}
+
+button {
+    border: 0px;
+    margin: 2px 0;
+}
+
+button:hover {
+    border-radius: 0;
+    box-shadow: none;
+    border-width: 0px;
+}
+
+#workspaces {
+    padding: 1px 10px;
+}
+
+#workspaces button {
+    padding: 5px 5px 5px 5px;
+    color: #bbc2cf;
+    margin: 1px 0;
+}
+
+#workspaces button.visible {
+    color: #bbc2cf;
+    background-color: #2b125d;
+    border-radius: 0;
+}
+
+#workspaces button.focused.current_output {
+    color: #ffffff;
+    background-color: #5f27cd;
+    border-radius: 0px;
+}
+
+#workspaces button.urgent {
+    color: #6d4774;
+    background-color: #7bc275;
+    border-radius: 0px;
+}
+
+#workspaces button.focused:hover {
+    color: white;
+    background-color: #2b125d;
+}
+
+/* MODULES */
+
+#backlight        { color: yellow; }
+#battery          { color: lightblue; }
+#battery.charging { color: #7bc275; }
+#battery.warning:not(.charging) {
+    background-color: #2a2e38;
+    color: #FCCE7B;
+}
+#clock            { color: yellow; }
+#cpu              { color: lightblue; }
+#custom-power {
+    color: lightcoral;
+    font-size: 20px;
+}
+#custom-weather   { color: cyan; }
+#custom-media     { color: @green; }
+#keyboard-state   { color: lightcoral; }
+#language         { color: lightcoral; }
+#memory           { color: lightblue; }
+#mode             { color: #C57BDB; }
+#network          { color: lightcoral; }
+#pulseaudio       { color: lightblue; }
+#temperature      { color: lightblue; }
+#temperature.critical { background: #eb4d4b; }

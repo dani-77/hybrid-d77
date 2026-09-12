@@ -382,3 +382,164 @@ Applied here, this would solve two things at once:
 
 Not started -- explicitly parked ("Anotado para já") while finishing
 the current ISO build/test.
+
+## 2026-09-12 night :: real disk install confirmed, then a real gap
+
+`doas h77-installer` on the previous ISO installed cleanly to a real
+disk on the first try. Immediately hit the exact gap flagged as open
+in the section above: NetworkManager had no permissions (same root
+cause as the live's own `anon` user, but chimera-installer's own
+target user this time) -- confirmed via `doas dinitctl enable
+networkmanager` needing to be run by hand.
+
+### void-installer comparison, verified against its real source
+
+User asked to check how Void's own `void-installer`
+(`void-linux/void-mklive`) handles groups/services, since
+`chimera-installer` clearly doesn't. It has two things
+`chimera-installer` has neither of:
+
+- **Groups** (`menu_useraccount`): an interactive checklist built from
+  the LIVE's own `/etc/group` (filtering out gid>=1000 and known
+  system groups), pre-checked with a fixed default (`wheel,audio,
+  video,floppy,cdrom,optical,kvm,users,xbuilder`), user-adjustable,
+  then a single `useradd -m -G "$USERGROUPS" ...` in the target.
+- **Services** (`menu_services`): an interactive checklist built from
+  the TARGET's own `/etc/sv/*` (whatever packages actually installed),
+  pre-checked for whatever's already runit-enabled by package triggers,
+  `enable_service()`/`disable_service()` being a plain `ln -sf`/`rm -f`
+  into `runsvdir/default` -- runit's version of the same boot.d symlink
+  convention dinit uses.
+
+`chimera-installer`, confirmed by re-reading its real source with this
+question in mind: `usermod -a -G wheel` is the ONLY group it ever
+touches, and there is not one single dinit/service-related line
+anywhere in the whole script.
+
+### install_service(enable=True): which dinit services self-enable
+
+Before writing the fix-up, checked which packages in our own list
+actually need it, rather than assuming all of them do -- confirmed
+against cbuild's own `install_service()` source
+(`src/cbuild/core/template.py`): passing `enable=True` bakes a symlink
+directly INTO the package itself, at `usr/lib/dinit.d/boot.d/<name>`
+-- meaning the service self-enables on ANY system that installs that
+package, live or target, no action needed from us. Checked every
+relevant package's real template:
+
+- **Self-enabling already** (`enable=True`, confirmed): `dbus`
+  (`dbus-daemon` + `dbus-daemon.user`), `elogind` (`elogind`).
+- **NOT self-enabling** (confirmed, needs a manual `/etc/dinit.d/
+  boot.d/` symlink on the actual system -- the same thing
+  `9990-chimera-user.sh` already does for the LIVE user, now needed
+  for the INSTALLED target too): `polkit` (service `polkitd`),
+  `networkmanager` (service `networkmanager`), `libseat` (subpackage
+  `libseat-seatd`, service `seatd`), `rtkit` (service `rtkit`),
+  `syslog-ng` (service `syslog-ng`).
+- `udiskie`'s service is `udiskie.user` (a PER-USER dinit service, a
+  different directory tree, `usr/lib/dinit.d/user/`) -- not relevant
+  here, we already start it per-session via sway's own `exec udiskie
+  -a`, not as a system service.
+
+**Important, and easy to get wrong**: none of this carries over from
+the live via `chimera-bootstrap -l`'s local tar-copy, even for
+services `9990-chimera-user.sh` DOES enable on the live (rtkit,
+polkitd, syslog-ng, networkmanager-or-dhcpcd). That script's own
+symlinks land in the live's writable overlay at boot time, not in the
+read-only `/run/live/rootfs/filesystem.*` image that the local
+bootstrap actually copies from -- so the installed target starts with
+NONE of those enabled, same as a from-scratch chimera-installer run
+would. Every one of them has to be enabled again, explicitly, for the
+target.
+
+### What got built: files/post-install
+
+`h77-installer` no longer `exec`s `chimera-installer` (that would
+replace the whole process, nothing could run afterward) -- it runs it
+normally, then calls `files/post-install <sysroot>` (installed to
+`/usr/lib/h77-installer/post-install`) if `$SYSROOT` (default
+`/mnt/root`, chimera-installer's own suggested default; overridable as
+`h77-installer`'s first argument if a different SystemRoot was typed
+in the menu) looks like a real completed install (`mountpoint -q` +
+`etc/passwd` exists). It:
+
+1. Finds the one user chimera-installer created (the single real
+   subdirectory under `$SYSROOT/home` -- confirmed chimera-installer
+   only ever creates exactly one), `usermod -aG
+   network,storage,audio,video` it in the target chroot.
+2. Symlinks `polkitd`/`networkmanager`/`seatd`/`rtkit`/`syslog-ng` into
+   `$SYSROOT/etc/dinit.d/boot.d/` -- but only for whichever of those
+   are actually present under `$SYSROOT/usr/lib/dinit.d/`, so this
+   stays correct even if the package set changes later.
+
+No interactive checklist, unlike Void -- matches this project's own
+established taste (hardcode what's already known, don't ask a menu
+what the answer already is), and the user's explicit steer this
+session ("Post install hook").
+
+### Still open
+
+- Not yet re-tested against a real disk install end to end (only that
+  it builds and the logic reads correctly) -- next real boot should
+  confirm `networkmanager`/`polkitd`/`seatd` all come up enabled
+  without a manual `dinitctl enable`.
+- `rtkit` and `syslog-ng` are enabled unconditionally if present, even
+  though neither is explicitly in `mklive-image.sh`'s own PKGS list --
+  they're pulled in transitively (base-full-misc, elsewhere) and DO
+  show up in a real build, but that's incidental, not declared. Worth
+  reconsidering once the package list is revisited.
+- Network-source installs still don't get `PACKAGES` filled in
+  automatically, and the post-install fix-up only helps AFTER
+  chimera-installer's own user-creation step, not during it.
+
+## 2026-09-12 night :: back to waybar -- yambar had real bugs
+
+After a successful real disk install and boot, three real problems
+surfaced with the yambar config that shipped up to this point (all
+observed on actual hardware, not assumed):
+
+1. The `battery` module hardcoded `BAT0`. Any laptop reporting
+   `BAT1` instead (not rare) gets nothing.
+2. Values didn't refresh reliably.
+3. The wireless network display stopped showing anything at all,
+   despite the module being configured and previously confirmed
+   against yambar's own real docs -- static documentation isn't the
+   same as tested runtime behavior, and this was never actually run
+   through yambar before shipping it (flagged as an open TODO earlier
+   in this file, and it caught up).
+
+User's call: drop yambar, go back to waybar using this project's own
+real, already-working d77devuan config (`pkg/d77-sway-skel/skel/
+.config/waybar`) instead of hand-writing a new one. Ported as directly
+as reasonable:
+
+- `config`/`style.css`/`d77.css`/`mediaplayer.py`/`wittr.sh` copied
+  over unmodified except the font (`style.css`: `Hack Nerd Font`,
+  matching this project's own choice for foot -- see `fonts-nerd-hack`
+  below) and header comments.
+- `sway/config`'s `exec yambar` -> `exec waybar`.
+- `pkg/h77-sway-dots/skel/.config/yambar/` removed entirely (git
+  history has it if ever needed again).
+
+Real cports package names, verified, added to `mklive-image.sh`'s sway
+`PKGS`:
+
+- `waybar` (`user` tier, 0.15.0 -- confirmed real via its own real
+  template.py, `-Dpulseaudio=enabled -Dmpris=enabled -Dlogind=enabled`
+  among its build flags, so the ported config's `pulseaudio`/
+  `sway/*`/`battery`/`network` modules all have what they need).
+- `fonts-nerd-hack` (`user` tier, a subpackage of `user/fonts-nerd`) --
+  a SEPARATE package from `fonts-hack-ttf` (`main`, used by foot):
+  plain Hack has no icon glyphs, the nerd-fonts-patched variant is a
+  different package entirely. Confirmed the exact subpackage name
+  (`fonts-nerd-{package}`, `package="hack"`) by reading the real
+  template.
+- `playerctl` + `python-gobject` (both `main`) -- `mediaplayer.py`'s
+  real runtime deps (MPRIS via playerctl, plus the `gi` Python module
+  it imports; the Debian-only `gir1.2-playerctl-2.0`/`python3-gi-cairo`
+  split doesn't apply here).
+- `curl` (`main`) -- `wittr.sh`'s only dependency.
+- `firefox` (`main`) -- user request, added alongside this batch.
+
+Not yet rebuilt/tested against a real boot at the time of writing --
+next step.
