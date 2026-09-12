@@ -106,6 +106,7 @@ h77-dots h77-sway-dots h77-installer"
         # of the disk-installer side, 2026-09-12 -- a thin wrapper
         # around the real chimera-installer/chimera-bootstrap, not a
         # custom installer. See pkg/h77-installer/template.py.
+        ;;
     *)
         echo "unknown image type: $IMAGE"
         echo
