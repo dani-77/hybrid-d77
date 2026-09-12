@@ -2,7 +2,13 @@
 #
 # Sway/swaylock/swaync dotfiles: ~/d77void/sway/skel/.config/{sway,
 # swaylock,swaync} (d77void already has its own "sway" variant -- this
-# is the closest, most direct match in the family).
+# is the closest, most direct match in the family). swaylock/config's
+# own `image=~/Wallpaper/background2_locked.png` was broken as ported
+# -- d77void keeps that image in a top-level ~/Wallpaper/ this project
+# never creates. Fixed the way d77devuan's own real config does it
+# instead: the lock image lives IN .config/swaylock/ itself
+# (background2_locked.png, copied in from d77devuan's own
+# pkg/d77-sway-skel), `image=~/.config/swaylock/background2_locked.png`.
 #
 # waybar/*: ~/d77devuan/pkg/d77-sway-skel/skel/.config/waybar (that
 # project's own real, working config, itself ported from d77void),

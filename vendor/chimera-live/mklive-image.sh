@@ -80,16 +80,24 @@ case "$IMAGE" in
         # base-full -> base-full-core -> base-bootstrap, confirmed
         # against real templates; chimera-repo-user does not, nothing
         # else pulls it in).
-        PKGS="${BASE_PKGS} sway swaybg swaylock swayidle waybar \
+        PKGS="${BASE_PKGS} sway swaybg swaylock swayidle swayimg waybar \
+swaync wmenu cliphist wlsunset xwayland-satellite \
 foot brightnessctl grim slurp wl-clipboard \
-fuzzel fonts-hack-ttf fonts-nerd-hack bash \
-playerctl python-gobject curl firefox \
-elogind libseat-seatd libseat-seatd-dinit \
+fuzzel fonts-hack-ttf fonts-nerd-hack fonts-font-awesome-otf bash \
+playerctl python-gobject curl wget2 firefox thunderbird \
+elogind libseat-seatd libseat-seatd-dinit mate-polkit \
 dbus dbus-dinit polkit polkit-dinit \
-networkmanager networkmanager-dinit \
-pipewire wireplumber pavucontrol \
-xdg-desktop-portal xdg-desktop-portal-wlr \
+networkmanager networkmanager-dinit power-profiles-daemon \
+pipewire wireplumber pavucontrol alsa-utils \
+xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
+xdg-user-dirs xdg-user-dirs-gtk xdg-utils \
 udisks udiskie udiskie-dinit \
+qt6ct kvantum breeze-gtk nwg-look papirus-icon-theme \
+thunar file-roller \
+acpi bash-completion bc-gh cmus cups system-config-printer \
+fastfetch feh gettext htop inxi imagemagick mousepad mpv \
+musl-locales nano smartmontools transmission ufw unzip usbutils \
+vim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
 chimera-repo-user \
 chimera-install-scripts \
 h77-dots h77-sway-dots h77-installer"
@@ -119,6 +127,30 @@ h77-dots h77-sway-dots h77-installer"
         # of the disk-installer side, 2026-09-12 -- a thin wrapper
         # around the real chimera-installer/chimera-bootstrap, not a
         # custom installer. See pkg/h77-installer/template.py.
+        #
+        # 2026-09-12 night: full cross-check against d77void's own real
+        # sway package list (mkd77.sh's D77_CORE + sway-specific PKGS,
+        # via COMMON/FUZZEL) -- every name below verified against a
+        # full listing of the real cports main+user trees (git trees
+        # API, not guessed), user's own explicit corrections included:
+        #   - swaync: WAS configured (skel + `exec swaync` in
+        #     sway/config) but the package itself was never added here
+        #     -- a real, silent gap, `user` tier.
+        #   - mate-polkit (`main`): a polkit AUTHENTICATION AGENT --
+        #     without one, no GUI app can ever prompt for a password,
+        #     regardless of polkitd running. Also missing until now.
+        #   - arc-theme, pcmanfm, geary, qt5ct: confirmed genuinely
+        #     absent from cports (checked, not assumed) -- breeze-gtk,
+        #     thunar, thunderbird, and qt6ct+kvantum alone used instead
+        #     (user's own correction).
+        #   - xarchiver, ranger, uget, plymouth, pulseaudio-utils,
+        #     qt5-wayland/qt6-wayland, nerd-fonts-symbols-ttf: also
+        #     confirmed absent, no direct substitute added (file-roller
+        #     covers xarchiver's role; qt5-base/qt6-base already bundle
+        #     their own Wayland platform plugin, nothing separate to
+        #     add; pipewire's own pulse compat covers pulseaudio-utils).
+        #   - wget -> wget2 (the real package name); ImageMagick ->
+        #     imagemagick (lowercase, case-sensitive filesystem).
         ;;
     *)
         echo "unknown image type: $IMAGE"

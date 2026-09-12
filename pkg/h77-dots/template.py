@@ -5,7 +5,14 @@
 # sibling h77-sway-dots package instead.
 #
 # Sources (all read-only references, copied in on 2026-09-12):
-#   - alacritty, kitty, qt5ct, qt6ct, Kvantum: ~/d77void/common/config/
+#   - alacritty, qt6ct, Kvantum, gtk-2.0/3.0/4.0, cmus, fastfetch, htop,
+#     mimeapps.list, pavucontrol.ini: ~/d77void/common/config/. qt5ct
+#     and kitty dropped entirely -- confirmed neither package exists in
+#     cports (qt5ct at all; kitty was never in this project's own list,
+#     foot is the terminal), shipping their config would just be dead
+#     weight. gtk-3.0/4.0 settings.ini: gtk-theme-name Arc-Dark ->
+#     Breeze-Dark (arc-theme doesn't exist either, breeze-gtk does,
+#     under KDE's own standard Breeze/Breeze-Dark naming).
 #   - foot: ~/d77devuan/pkg/d77-sway-skel/skel/.config/foot (font
 #     switched to Hack, matching fuzzel.ini's own font=hack below)
 #   - fuzzel: ~/d77void/common/fuzzel_c/fuzzel/fuzzel.ini (terminal=
@@ -96,6 +103,13 @@ def install(self):
         self.files_path / "50-udisks.rules", "usr/share/polkit-1/rules.d"
     )
     self.install_file(self.files_path / "motd", "etc")
+    # QT_QPA_PLATFORMTHEME=qt6ct: without this, Qt apps ignore
+    # qt6ct/Kvantum entirely and fall back to their own default style
+    # -- user's own call, real Void convention (d77void's own D77_CORE
+    # bundle ships qt5ct+qt6ct+kvantum together for the same reason).
+    # /etc/environment is read by PAM's pam_env at login, system-wide,
+    # standard Linux convention (not sway/labwc-specific).
+    self.install_file(self.files_path / "environment", "etc")
     self.install_bin(self.files_path / "fuzzel-power-menu")
 
     # files/storage.sysusers: "g storage -" (systemd-sysusers syntax,

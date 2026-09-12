@@ -543,3 +543,80 @@ Real cports package names, verified, added to `mklive-image.sh`'s sway
 
 Not yet rebuilt/tested against a real boot at the time of writing --
 next step.
+
+## 2026-09-12 night, later :: full app-bundle cross-check against d77void
+
+User's framing: the ISO so far is a proof of concept, a lot of a real
+desktop app bundle is still missing. Directed to cross-check against
+d77void's own real sway variant instead of guessing a list from
+scratch -- read `mkd77.sh`'s `sway)` case, `D77_CORE` (the shared app
+bundle across all d77void variants), and the functions `COMMON=yes`/
+`FUZZEL=yes` actually call (`include_common` -> `_include_base`,
+`include_fuzzel`) to get the REAL list, not just the `PKGS=` line.
+
+Verified every candidate against a full, non-truncated listing of
+cports' real `main` (2387 dirs) and `user` (851 dirs) trees, fetched
+via the git trees API (`gh api .../git/trees/<sha>`, recursion via
+each dir's own sha) rather than the paginated contents endpoint (which
+silently caps at 1000) or one `gh search code` call per package (hits
+GitHub's search rate limit fast).
+
+**User's own examples confirmed exactly right**: `arc-theme` genuinely
+absent, `breeze-gtk` (`main`) is the real substitute; `pcmanfm`
+absent, `thunar` (`user`) instead; `geary` absent, `thunderbird`
+(`main`) instead; `qt5ct` absent, only `qt6ct` (`main`) + `kvantum`
+(already had) exist.
+
+**Found independently, real functional gaps**: `swaync` was configured
+(skel + `exec swaync` already in sway/config) but the package itself
+was NEVER added to `mklive-image.sh`'s `PKGS` -- silently broken.
+`mate-polkit` (`main`) -- a polkit AUTHENTICATION AGENT, distinct from
+`polkitd` the daemon -- was missing entirely; without one, no GUI app
+can ever prompt for a password no matter what else is enabled. Also:
+`swaylock/config`'s `image=~/Wallpaper/background2_locked.png` pointed
+at a top-level `~/Wallpaper/` dir this project never creates (a
+d77void-ism, not ported correctly the first time) -- fixed the way
+d77devuan's own real config does it: the lock image lives inside
+`.config/swaylock/` itself, copied in from d77devuan's own
+`pkg/d77-sway-skel`, `image=~/.config/swaylock/background2_locked.png`.
+
+**Confirmed genuinely absent, no substitute added** (checked, not
+assumed): `alsa-tools`, `cups-browsed`, `plymouth` (no boot-splash
+pipeline exists here anyway), `pulseaudio-utils` (pipewire's own pulse
+compat already covers this), `qt5-wayland`/`qt6-wayland` (Qt's own
+Wayland platform plugin is bundled into qt5-base/qt6-base already,
+nothing separate to add), `ranger`, `uget`, `nerd-fonts-symbols-ttf`,
+`nwg-launchers` (not needed, fuzzel is the launcher). `xarchiver`
+absent too -- `file-roller` (`main`) used instead, a better fit
+alongside `thunar` anyway (same GTK/GNOME ecosystem). `wget` -> the
+real package is `wget2`. `ImageMagick` -> lowercase `imagemagick`
+(case-sensitive).
+
+**Everything added to `mklive-image.sh`'s sway `PKGS`, all confirmed
+real** (main unless noted): `swayimg`, `swaync` (user), `wmenu`
+(sway/config already sets `$menu wmenu-run`), `cliphist` (user),
+`wlsunset` (user), `xwayland-satellite` (user), `fonts-font-awesome-otf`,
+`playerctl`+`python-gobject` (already had, waybar's mediaplayer.py),
+`wget2`, `thunderbird`, `mate-polkit`, `power-profiles-daemon`,
+`alsa-utils` (user), `xdg-desktop-portal-gtk`, `xdg-user-dirs`(+`-gtk`),
+`xdg-utils`, `qt6ct`, `kvantum` (already had), `breeze-gtk`, `nwg-look`
+(user), `papirus-icon-theme`, `thunar` (user), `file-roller`, `acpi`,
+`bash-completion`, `bc-gh`, `cmus`, `cups`, `system-config-printer`,
+`fastfetch`, `feh` (user), `gettext`, `htop`, `inxi`, `imagemagick`,
+`mousepad` (user), `mpv`, `musl-locales`, `nano`, `smartmontools`,
+`transmission` (user), `ufw`, `unzip`, `usbutils`, `vim`, `yt-dlp`,
+`zathura`+`zathura-pdf-poppler` (user), `gnome-calculator`.
+
+New config dirs ported into `pkg/h77-dots/skel/.config/` from
+`~/d77void/common/config/` (the ones `_include_base` actually copies
+that are relevant to apps now in our own list): `gtk-2.0`, `gtk-3.0`,
+`gtk-4.0` (theme name fixed Arc-Dark -> Breeze-Dark), `cmus`,
+`fastfetch`, `htop`, `mimeapps.list`, `pavucontrol.ini`. Dropped
+`qt5ct` and `kitty` skel dirs entirely -- dead config for packages
+that don't exist/were never installed, the same class of bug `swaync`
+turned out to be, just caught proactively this time instead of by
+accident.
+
+Not yet rebuilt/tested against a real boot at the time of writing --
+this is a large batch, next step is a full rebuild + real-hardware
+check.
