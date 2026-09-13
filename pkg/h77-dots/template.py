@@ -115,6 +115,19 @@ def install(self):
         self.files_path / "50-udisks.rules", "usr/share/polkit-1/rules.d"
     )
     self.install_file(self.files_path / "motd", "etc")
+    # motd-installed: a short, generic welcome with NO login
+    # credentials and no live-only install instructions -- the live
+    # motd above is wrong once actually installed to disk (stale
+    # "password: chimera" after the real install sets a real password;
+    # "doas h77-installer" makes no sense on an already-installed
+    # system). Installed to usr/share, not etc, so it never becomes
+    # the ACTUAL /etc/motd by just being packaged -- h77-install-
+    # scripts' own menu_install copies it over $sysroot/etc/motd as
+    # the very last step of a real install (see its own patch
+    # comment), once $sysroot/usr/share/h77/motd-installed (this same
+    # file, now inside the freshly bootstrapped target) actually
+    # exists to copy from. User's own request, 2026-09-13.
+    self.install_file(self.files_path / "motd-installed", "usr/share/h77")
     # QT_QPA_PLATFORMTHEME=qt6ct: without this, Qt apps ignore
     # qt6ct/Kvantum entirely and fall back to their own default style
     # -- user's own call, real Void convention (d77void's own D77_CORE

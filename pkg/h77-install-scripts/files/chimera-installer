@@ -1368,6 +1368,23 @@ The generated file will only work out of the box for basic setups." 12 70
     # menu_services (right after its own set_bootloader call).
     menu_hybrid_services "$sysroot"
 
+    # hybrid-d77 patch: the live motd (h77-dots' /etc/motd -- login
+    # credentials + live-only "doas h77-installer" instructions) is
+    # wrong on an installed system: the real install above just set a
+    # REAL password, and there's no reason to run the installer again.
+    # h77-dots also ships a generic installed-system motd at
+    # usr/share/h77/motd-installed precisely for this -- copy it over
+    # $sysroot/etc/motd now that packages are on the target (so that
+    # file actually exists there to copy from); if it's missing for
+    # any reason (e.g. h77-dots wasn't part of this particular
+    # install), just drop the live motd instead of leaving stale
+    # instructions in place. User's own request, 2026-09-13.
+    if [ -f "$sysroot/usr/share/h77/motd-installed" ]; then
+        cp -f "$sysroot/usr/share/h77/motd-installed" "$sysroot/etc/motd"
+    else
+        rm -f "$sysroot/etc/motd"
+    fi
+
     while :; do
         ui_dialog --yesno "${DLG_BOLD}Chimera Linux has been installed.${DLG_RESET}\n
 Do you wish to open a shell to perform additional tasks?" 8 60

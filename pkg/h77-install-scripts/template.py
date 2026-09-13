@@ -155,6 +155,16 @@
 # exec'ing chimera-installer, so our own patches can never be silently
 # replaced by vanilla upstream mid-run.
 #
+# Same day, user request: h77-dots' live /etc/motd (login credentials
+# + "doas h77-installer" instructions) makes no sense once actually
+# installed to disk. menu_install now copies h77-dots' own
+# usr/share/h77/motd-installed (a short, generic, credential-free
+# welcome -- see h77-dots' own template.py) over $sysroot/etc/motd as
+# the last real step, right after the services checklist (packages are
+# already on $sysroot by then, so the source file exists to copy);
+# falls back to just deleting the live motd if that file isn't there
+# for any reason.
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --
