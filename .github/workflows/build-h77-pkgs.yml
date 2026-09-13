@@ -85,12 +85,28 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="h77-pkgs"
-          gh release view "$tag" >/dev/null 2>&1 \
-            && gh release delete "$tag" --yes --cleanup-tag
-          gh release create "$tag" \
-            --title "hybrid-d77 packages (h77-dots, h77-sway-dots, h77-installer)" \
-            --notes "Built by ${{ github.workflow }} from ${{ github.sha }}. Consumed by iso/fetch-pkgs.sh, not meant to be installed by hand." \
-            cbuild-out/*.pub \
-            cbuild-out/hybrid/x86_64/*.apk \
-            cbuild-out/hybrid/x86_64/APKINDEX.tar.gz \
-            cbuild-out/SHA256SUMS
+          # Retried, not guessed: two runs in a row (2026-09-13) failed
+          # here on nothing but a transient GitHub API error -- HTTP 500
+          # then HTTP 502 -- with the actual build already done and
+          # fine both times. gh itself has no built-in retry for this,
+          # so wrap the whole view/delete/create sequence in one.
+          n=0
+          until [ "$n" -ge 5 ]; do
+            gh release view "$tag" >/dev/null 2>&1 \
+              && gh release delete "$tag" --yes --cleanup-tag
+            if gh release create "$tag" \
+              --title "hybrid-d77 packages (h77-dots, h77-sway-dots, h77-installer)" \
+              --notes "Built by ${{ github.workflow }} from ${{ github.sha }}. Consumed by iso/fetch-pkgs.sh, not meant to be installed by hand." \
+              cbuild-out/*.pub \
+              cbuild-out/hybrid/x86_64/*.apk \
+              cbuild-out/hybrid/x86_64/APKINDEX.tar.gz \
+              cbuild-out/SHA256SUMS
+            then
+              exit 0
+            fi
+            n=$((n + 1))
+            echo "publish attempt $n failed, retrying in 15s..." >&2
+            sleep 15
+          done
+          echo "publish failed after $n attempts" >&2
+          exit 1
