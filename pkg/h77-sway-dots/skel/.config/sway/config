@@ -81,6 +81,10 @@ exec /usr/libexec/polkit-mate-authentication-agent-1 &
 ### Start SwayNotificationCenter
 exec swaync &
 
+### XDG
+exec xdg-user-dirs-update &
+exec xdg-user-dirs-gtk-update &
+
 # Keyboard layout
 input type:keyboard {
     xkb_layout ""
