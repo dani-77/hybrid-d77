@@ -921,3 +921,154 @@ target distro -- this is the second time this exact class of mistake
 has shown up (the first was the swaylock lock-image path, ported
 verbatim from d77void's own `~/Wallpaper/` convention this project
 never creates). Not yet rebuilt/retested at the time of writing.
+
+## 2026-09-13, real Toshiba boot :: Filesystems showed "?" for every partition, then SystemRoot failed
+
+Root cause, confirmed for real via a side-by-side `lsblk` run on this
+dev host (not guessed): `lsblk -pno NAME,TYPE` tree-prefixes the NAME
+column with box-drawing glyphs (`└─`, `├─`) whenever a disk has more
+than one partition -- e.g. `└─/dev/sda1` instead of `/dev/sda1`. That
+corrupted string was what the Filesystems partition-picker loop stored
+as the device path: `lsblk -no SIZE "└─/dev/sda1"` then failed outright
+("não é um dispositivo de bloco"), giving the "?" fallback for every
+row, and the same corrupted path later broke `mkfs`/`mount` too, so
+`/mnt/root` was never actually mounted by the time SystemRoot's own
+`mountpoint -q` check ran. Fixed by adding `-l` (list mode, disables
+the tree formatting) to that one `lsblk` call. Also dropped `--no-tags`
+from the partition-picker dialog itself, so the real device path (not
+just the size) is visible -- with `--no-tags`, only the item column
+ever showed.
+
+Cosmetic, same round: every dialog's `--backtitle`/`--title` renamed
+from "Chimera Linux installer" to "Hybrid D77 installer".
+
+## 2026-09-13, later :: Filesystems still failed after the lsblk fix -- reverted, then restored void-style
+
+Rebuilt and retested with the lsblk fix in place. Real hardware still
+showed `ERROR: no partition was assigned to / -- nothing to apply`
+even after the user confirmed completing the whole cycle correctly
+(ext4, `/`, Yes to format). Added heavier diagnostics (a "Recorded:
+..." confirmation after each partition entry, reading back from the
+config file itself; a raw dump of that file in the final error) and
+ruled out `grep`/`sh` compatibility by chrooting into this project's
+own built ISO (mounting its erofs live filesystem directly, bind-
+mounting a writable dir in for `/tmp`) -- Chimera's real `grep` (BSD
+grep, GNU-compatible) and real `/bin/sh` both ran the exact
+write-and-check sequence correctly there. The real-hardware failure
+mode stayed unexplained.
+
+User's own call, invoking the fallback agreed earlier ("se não
+perceberes como fazer no chimera retrocede e deixa só a rede que está
+a funcionar correta"): reverted `menu_hybrid_partition` and
+`menu_hybrid_filesystems` entirely. `UserAccount` went back to leading
+straight to `SystemRoot`, matching pristine upstream's own order.
+Network and Keymap were kept (both confirmed working on the same real
+hardware). Also added, per user request, a motd + h77-installer
+pre-flight reminder that partitioning/mounting was manual again, at
+`/mnt/root`.
+
+Discussed afterward (user question: "como lida com o particionamento e
+montagem o script do void? o que fizemos de diferente...que fez com
+que aqui não funcionasse?"): re-read void-installer's real source side
+by side with this project's own first attempt. The real, structural
+difference: void's `TARGETDIR` is a fixed constant (`/mnt/target`),
+and its `menu_filesystems` (interactive) does ZERO disk I/O -- it only
+records the plan into a config file. The actual `mkfs`/`mount` only
+happens in a separate function, `create_filesystems`, called once,
+non-interactively, immediately before the real install begins -- no
+gap between formatting/mounting and using that mount. This project's
+first attempt mixed planning and execution together (format+mount
+happened interactively, mid-menu, inside Filesystems itself) because
+chimera-installer's own `menu_sysroot` (never modified) requires
+`mountpoint -q` to already be true when SystemRoot is selected, a
+different architecture from void's fixed TARGETDIR.
+
+User raised a real concern before any of this was rebuilt: `/mnt/root`
+isn't a directory that already exists (same as void's own
+`/mnt/target` -- both are just arbitrary paths `mkdir -p`'d at
+runtime), and their own proven manual workflow always mounts directly
+at `/mnt`. Checked `genfstab`'s real source first: it strips whatever
+`ROOT_PATH` actually is via a generic `${target#$ROOT_PATH}`, nothing
+hardcoded to `/mnt` -- either path works identically as far as this
+project's tooling goes, so the target path was changed from
+`/mnt/root` to plain `/mnt` to match the user's own convention.
+
+Partition/Filesystems were then RESTORED, rewritten to actually mirror
+void's real split this time: the interactive loop only records into
+`HD77_FS_FILE` (keeping the "Recorded: ..." diagnostic and the raw
+dump on error, added just before the revert -- real proof beats
+guessing if this ever breaks again). Once "Done" is picked, ONE
+consolidated confirmation shows the whole plan (replacing the earlier
+per-partition yes/no), then `mkfs`/`mount` runs as a single
+non-interactive pass mirroring `create_filesystems` exactly -- no more
+dialogs mid-execution. `SYSROOT` is set to the fixed `/mnt` at the end.
+
+Also fixed the same round: the real cause of Groups/Services appearing
+"desligados" on an earlier test -- found by the user directly.
+Upstream `chimera-installer`'s own very first screen asks to fetch and
+run the latest version from
+`raw.githubusercontent.com/chimera-linux/chimera-install-scripts`;
+answering yes re-execs into that pristine, unpatched copy for the rest
+of the run, silently discarding every patch here. Fixed with
+upstream's own intended mechanism (`$SKIP_UPDATE_CHECK`, gates the
+whole prompt off) exported from `h77-installer`'s own wrapper, rather
+than touching the patched script.
+
+**Confirmed working end to end** on a subsequent real Toshiba install:
+Partition, Filesystems (void-style), SystemRoot, Kernel, Packages,
+Bootloader, Install, groups/services checklists, all clean. This is
+the most consequential (destructive) piece of this whole project and
+it passed a real disk install cleanly.
+
+## 2026-09-13, after the successful install :: small real-hardware polish round
+
+A few small things found/asked for once the install was confirmed
+working end to end:
+
+- `fuzzel-power-menu`'s Logout didn't work (Suspend/Reboot/Shutdown
+  did). Root-caused against elogind's own real source
+  (github.com/elogind/elogind): the three power actions talk straight
+  to elogind's Manager object, no session/cgroup involved; `loginctl
+  terminate-session` maps to `Terminate` -> `session_stop()` ->
+  `session_stop_scope()`, which does `session_kill(KILL_ALL, SIGTERM)`
+  against the session's own cgroup (confirmed in
+  `logind-session-dbus.c`/`logind-session.c`) -- silently a no-op if
+  that cgroup was never correctly associated via `pam_elogind`, which
+  a brand-new dinit + getty-autologin + sway stack (no systemd-logind
+  heritage the way Void's own setup has) is exactly the kind of thing
+  that can still be wrong on. Fixed by also trying `swaymsg exit`
+  (already this project's own real, WM-native mechanism, used by the
+  sway config's own `$mod+Shift+e` emergency-exit binding),
+  independent of elogind/cgroups -- only fires under sway.
+- Only Suspend had an icon in that same menu (confirmed via hexdump,
+  not guessed) -- Logout/Reboot/Shutdown had none. Pulled the missing
+  three from this project's own real, working reference, d77devuan's
+  fuzzel-power-menu: Font Awesome codepoints (`fonts-font-awesome-otf`
+  already in this image's packages) U+F2F5 (sign-out), U+F021
+  (refresh), U+F011 (power-off). Checked d77arch's and d77obarun's own
+  real (not stale) fuzzel-power-menu scripts too, per the user's own
+  request -- neither has this same partial-icon bug (d77arch uses one
+  icon on the fuzzel prompt only, deliberately minimal; d77obarun's is
+  architecturally different -- `66-userctl`, qtile-specific logout --
+  and has zero icons anywhere). User's call: leave both as they are,
+  this was cosmetic, not a bug fix, for either.
+- GTK2 apps had no theme at all until the user hand-ran `nwg-look` --
+  there was no `skel/.gtkrc-2.0` (GTK2's own real per-user config file,
+  confirmed via GTK 2.24's real `gtkrc.c`: read from `$HOME` root, not
+  `.config`, auto-added as a default rc file by `gtk_rc_init`). Added
+  it with the same values `gtk-3.0`/`gtk-4.0`'s `settings.ini` already
+  use. The `include` line uses a plain relative filename
+  (`.gtkrc-2.0.mine`, no leading `~`, no hardcoded username) -- checked
+  GTK 2.24's real `parse_include_file()` in `gtkrc.c`: `~` is never
+  expanded there, only `g_path_is_absolute()` is checked, unlike
+  d77void's own `.gtkrc-2.0` which hardcodes
+  `/home/anon/.gtkrc-2.0.mine` (would silently break under any other
+  username).
+- `motd`'s partitioning explanation (ESP/BIOS-MBR detail) trimmed --
+  redundant once Partition/Filesystems were restored as real
+  interactive, guided steps inside the installer itself.
+- Installed-system motd: added a second, generic, credential-free
+  `motd-installed` (h77-dots' own `usr/share/h77/motd-installed`) that
+  `menu_install` copies over `$sysroot/etc/motd` as the very last real
+  step -- the live motd's login credentials and "doas h77-installer"
+  instructions are both wrong once actually installed to disk.

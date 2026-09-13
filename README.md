@@ -48,20 +48,54 @@ vendor/chimera-live/          vendored fork of chimera-linux/chimera-live
                                against the real repo, main + user tiers)
                                and a live-user group fix in initramfs-tools/
                                .../9990-chimera-user.sh.
+vendor/chimera-install-scripts/ vendored fork of chimera-linux/
+                               chimera-install-scripts -- chimera-installer/
+                               chimera-bootstrap/chimera-chroot/genfstab.
+                               chimera-installer itself is real patched (not
+                               just wrapped): interactive Groups + Services
+                               checklists, Partition + Filesystems (planning
+                               and non-interactive execution split, mirrors
+                               void-installer's own architecture), Network
+                               (nmtui) and Keymap steps upstream doesn't
+                               have at all, plus a couple of real upstream
+                               bugs fixed (--keep-tite breaking every
+                               screen's redraw; the "fetch latest version"
+                               prompt silently discarding every patch here
+                               -- now gated off via $SKIP_UPDATE_CHECK).
+                               Packaged as pkg/h77-install-scripts, which
+                               replaces the real chimera-install-scripts in
+                               this project's own package set entirely. See
+                               that package's own template.py for the full,
+                               dated history of every patch.
 pkg/h77-dots/                  general app dotfiles (/etc/skel): foot,
-                               alacritty, kitty, qt5ct/qt6ct, Kvantum,
+                               alacritty, qt6ct, Kvantum, gtk-2.0/3.0/4.0,
                                fuzzel + fuzzel-power-menu, the wallpaper,
-                               50-udisks.rules, motd
+                               50-udisks.rules, motd (+ a separate,
+                               credential-free motd-installed the installer
+                               swaps in after a real disk install)
 pkg/h77-sway-dots/             sway/swaylock/swaync/waybar dotfiles
                                (/etc/skel), depends = ["h77-dots"]
-pkg/h77-installer/             thin wrapper around Chimera's own real
-                               chimera-installer, pre-loaded with this
-                               project's defaults, plus a post-install
-                               fix-up for groups/services chimera-installer
-                               itself doesn't handle (see docs/NOTES.md)
+pkg/h77-installer/             thin wrapper around h77-install-scripts' own
+                               patched chimera-installer, pre-loaded with
+                               this project's defaults (/etc/h77/
+                               installer.conf); the old post-install
+                               groups/services fix-up is now a manual-only
+                               fallback, superseded by the real interactive
+                               checklists patched into the installer itself
+pkg/h77-install-scripts/       cports package for the patched
+                               chimera-installer above (see vendor/
+                               chimera-install-scripts/ entry)
+.github/workflows/
+  build-h77-pkgs.yml            builds every pkg/h77-* via cbuild in CI and
+                               publishes them as .apk files on a GitHub
+                               Release (tag h77-pkgs) -- mirrors
+                               d77crux-live's own build-kernel.yml
 iso/mklive-d77.sh              wrapper around vendor/chimera-live/mklive.sh,
                                builds the "sway" variant (main + user repos,
                                plus this project's own local package repo)
+iso/fetch-pkgs.sh              downloads the latest h77-pkgs release
+                               instead of rebuilding locally every time
+                               (mirrors d77crux-live's fetch-kernel.sh)
 container/                     Containerfile + entrypoint (builds the ISO)
                                and cbuild.Containerfile + cbuild-entrypoint.sh
                                (builds pkg/h77-* into real .apk files via
@@ -72,24 +106,32 @@ docs/NOTES.md                  field notes -- read before touching the build
 
 ## Status
 
-Confirmed working end to end, live boot through a real disk install: the
-live ISO boots (tested on real hardware, not just QEMU), `doas
-h77-installer` installs to disk using Chimera's own real
-`chimera-installer`, and the installed system boots with Sway/Waybar
-running. See `docs/NOTES.md` for the full field notes, what's still
-rough (network-source installs, a couple of services worth double
--checking), and the reasoning behind each design call.
+Confirmed working end to end on real hardware (not just QEMU), including
+the destructive disk-partitioning path: live boot → `doas h77-installer`
+→ interactive Partition (cfdisk) + Filesystems (plan, then one
+non-interactive format/mount pass, mirroring void-installer's own
+`menu_filesystems`/`create_filesystems` split) → SystemRoot → Kernel →
+Packages → Bootloader → Install, groups/services checklists applied,
+installed-system motd swapped in, reboot into a working Sway/Waybar
+desktop. See `docs/NOTES.md` for the full field notes, what's still open
+(network-source installs, a couple of services worth double-checking),
+and the reasoning behind every design call, including a few real bugs
+found and fixed via actual hardware testing along the way.
 
-## Reference / inspiration (not vendored, just studied)
+## Reference / inspiration
 
 - [chimera-install-scripts](https://github.com/chimera-linux/chimera-install-scripts) —
-  `chimera-installer`/`chimera-bootstrap`, which `pkg/h77-installer`
-  wraps rather than replaces.
+  forked and patched directly as `vendor/chimera-install-scripts/` /
+  `pkg/h77-install-scripts` (see above), not just studied.
 - [cports](https://github.com/chimera-linux/cports) — the package
   collection itself; every package name referenced here has been
   verified against it (both the `main` and `user` repo tiers).
 - [void-mklive](https://github.com/void-linux/void-mklive) — `void-installer`'s
-  own groups/services checklists were the reference point for figuring
-  out what `chimera-installer` doesn't do.
+  own real architecture was the reference point for several patches: its
+  Groups/Services checklists (things upstream chimera-installer doesn't
+  have at all), and its `menu_filesystems`/`create_filesystems` split
+  (planning is interactive, execution is one non-interactive pass) —
+  re-read side by side with this project's own first attempt after that
+  one didn't hold up on real hardware.
 
 ## Not affiliated with the Chimera Linux project.
