@@ -117,19 +117,21 @@ consumes those and runs `mklive.sh` (needs root, for `mount(8)`).
 `iso/mklive-d77.sh` is real Chimera's own `mklive.sh`, meant to run ON
 Chimera -- no container needed at all when the host already is one. It
 just needs a local apk repo at `cbuild-out/hybrid/` to pull `h77-*`
-from:
+from, populated either way:
+
+- **build it yourself**, via cports/`cbuild` (Chimera's own normal
+  package build system, same role xbps-src plays for Void) --
+  `container/cbuild-entrypoint.sh` is the exact, real recipe (clone
+  cports, sync `pkg/h77-*` in as a "hybrid" category, `cbuild
+  bootstrap` + `cbuild pkg` per package); run those same commands
+  directly instead of through the container.
+- **or fetch CI's already-built packages**: `./iso/fetch-pkgs.sh`.
+
+Either way, then:
 
 ```sh
-./iso/fetch-pkgs.sh        # pulls the latest h77-* build from GitHub
 doas ./iso/mklive-d77.sh   # needs root, for mount(8)
 ```
-
-Building `h77-*` yourself instead of fetching CI's build (e.g. to test
-a local change) needs `cbuild`/cports, real dependencies most hosts
-won't already have installed -- `container/cbuild-entrypoint.sh` is
-the exact, real recipe (clone cports, sync `pkg/h77-*` in as a
-"hybrid" category, `cbuild bootstrap` + `cbuild pkg` per package); read
-it before reproducing those steps by hand.
 
 ### From any host (rootful container)
 
