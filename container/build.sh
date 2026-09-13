@@ -1,7 +1,6 @@
 #!/bin/sh
 # Build the official gnome hybrid-d77/chimera-live test ISO from any host
-# via a container, rootful (chroot/mount work needs it -- same reasoning
-# as d77alpine's container/build.sh).
+# via a container, rootful (chroot/mount work needs it).
 #
 #   container/build.sh                 # wrapper: builds image + runs rootful
 #   REBUILD=1 container/build.sh       # rebuild the image first

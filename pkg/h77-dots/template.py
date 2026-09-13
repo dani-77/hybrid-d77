@@ -1,6 +1,7 @@
 # hybrid-d77 :: general app dotfiles (not sway-specific), as a cports
-# package. Installed to /etc/skel like d77alpine's d77-sway-skel, but
-# split apart here per the user's own plan (2026-09-12): app dotfiles
+# package. Installed to /etc/skel like an equivalent Alpine
+# d77-sway-skel, but split apart here per the user's own plan
+# (2026-09-12): app dotfiles
 # with no WM-specific content live here, sway's own config lives in the
 # sibling h77-sway-dots package instead.
 #
@@ -25,7 +26,7 @@
 #     colors file -- left as is, matches d77void's own real config
 #     exactly (not a mismatch introduced here), not touched unless
 #     asked.
-#   - foot: ~/d77devuan/pkg/d77-sway-skel/skel/.config/foot (font
+#   - foot: an existing sway skel's own .config/foot (font
 #     switched to Hack, matching fuzzel.ini's own font=hack below)
 #   - fuzzel: ~/d77void/common/fuzzel_c/fuzzel/fuzzel.ini (terminal=
 #     fixed from kitty to foot -- kitty was never actually in this
@@ -34,13 +35,13 @@
 #     installed to /usr/bin -- a real #!/usr/bin/env bash script (see
 #     depends= below), used by h77-sway-dots' sway config (`bindsym
 #     $mod+x exec fuzzel-power-menu`, unmodified from d77void's own).
-#   - backgrounds/d77.png (the wallpaper): ~/d77devuan/pkg/d77-sway-skel/
-#     skel/.config/backgrounds -- referenced by h77-sway-dots' sway
+#   - backgrounds/d77.png (the wallpaper): an existing sway skel's own
+#     .config/backgrounds -- referenced by h77-sway-dots' sway
 #     config via `output * bg ~/.config/backgrounds/d77.png fill`, so it
 #     lives in the always-installed h77-dots rather than the sway-only
 #     package -- any future non-sway variant gets the same wallpaper too.
 #   - files/50-udisks.rules: ~/d77void/common/50-udisks.rules (the same
-#     rule ported to obarun/arch/devuan/alpine earlier this project --
+#     rule ported to several earlier projects of this author's own --
 #     grants org.freedesktop.udisks(2).* to the `storage` group.
 #   - files/motd: shown at login, documents the anon/chimera and
 #     root/chimera credentials -- no greeter needed (see h77-sway-dots'

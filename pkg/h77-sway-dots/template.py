@@ -5,15 +5,15 @@
 # is the closest, most direct match in the family). swaylock/config's
 # own `image=~/Wallpaper/background2_locked.png` was broken as ported
 # -- d77void keeps that image in a top-level ~/Wallpaper/ this project
-# never creates. Fixed the way d77devuan's own real config does it
+# never creates. Fixed the way an existing, real sway config does it
 # instead: the lock image lives IN .config/swaylock/ itself
-# (background2_locked.png, copied in from d77devuan's own
-# pkg/d77-sway-skel), `image=~/.config/swaylock/background2_locked.png`.
+# (background2_locked.png, copied in from that same source),
+# `image=~/.config/swaylock/background2_locked.png`.
 #
-# waybar/*: ~/d77devuan/pkg/d77-sway-skel/skel/.config/waybar (that
-# project's own real, working config, itself ported from d77void),
-# unmodified apart from the font (style.css: Hack Nerd Font, matching
-# this project's own font choice -- see h77-dots' foot.ini).
+# waybar/*: an existing, real, working waybar config (itself
+# originally ported from d77void), unmodified apart from the font
+# (style.css: Hack Nerd Font, matching this project's own font choice
+# -- see h77-dots' foot.ini).
 #
 # HISTORY, 2026-09-12: this package shipped a from-scratch yambar
 # config first (waybar was wrongly believed unpackaged in cports at

@@ -9,12 +9,12 @@ First session. No build attempted yet -- this is what came out of reading
 
 - **`vendor/chimera-live`** -- vendored fork of
   [chimera-linux/chimera-live](https://github.com/chimera-linux/chimera-live)
-  (same pattern as d77obarun's vendored fork of `iso-builder/`). BSD-2-Clause,
+  (same vendored-fork pattern used elsewhere). BSD-2-Clause,
   except `initramfs-tools/` which is Debian's live-boot project (GPLv3) --
   per their own `COPYING.md`, that makes the *whole* repo GPLv3 as a
   combined work. Keep `COPYING.md` intact.
 - **`pkg/d77-sway-skel`** -- our own package, the equivalent of
-  d77alpine's `pkg/d77-sway-skel/APKBUILD`. Chimera uses `apk` too (same
+  an equivalent Alpine `APKBUILD`. Chimera uses `apk` too (same
   package *format* as Alpine), but packages are built via **cports**
   ([chimera-linux/cports](https://github.com/chimera-linux/cports)), whose
   templates are **Python** (`template.py`), not abuild's shell
@@ -44,10 +44,11 @@ First session. No build attempted yet -- this is what came out of reading
   `d77-sway-skel` does on Alpine, where `genapkovl-d77.sh` carries a good
   chunk of it (`etc/local.d/d77-live.start`, the live `greetd.toml`'s
   `[initial_session]`, etc).
-- **Init system is `dinit`**, not OpenRC or systemd. d77alpine's
-  `*-openrc` subpackage pattern (e.g. `greetd-openrc`) has no direct
-  translation -- need to find out how dinit service files are packaged
-  and enabled in cports before `depends=` can be filled in for real.
+- **Init system is `dinit`**, not OpenRC or systemd. The `*-openrc`
+  subpackage pattern (e.g. `greetd-openrc`) used on Alpine has no
+  direct translation -- need to find out how dinit service files are
+  packaged and enabled in cports before `depends=` can be filled in
+  for real.
 - **Base filesystem is `erofs` by default** (not squashfs) -- `-s` flag
   exists if squashfs is ever needed, but no reason to override yet.
 - **Live-boot mechanism**: a vendored/adapted copy of Debian's
@@ -106,8 +107,8 @@ def _(self):
    under `/etc/live/boot/` (or `etc/live/boot.conf` config), shipped by
    which package -- possibly `d77-sway-skel` itself, possibly a small
    dedicated `d77-live` package so `d77-sway-skel` stays installable on
-   a normal (non-live) target too, same reasoning as d77alpine's own
-   skel/apps split.
+   a normal (non-live) target too, same reasoning behind a skel/apps
+   split done elsewhere.
 5. Only after 1-4: actually run `iso/mklive-d77.sh` for a first real ISO
    attempt.
 
@@ -202,10 +203,10 @@ Per the user's own 3-part plan, split into:
 
 1. **`pkg/h77-dots`** -- general app dotfiles (foot, alacritty, kitty,
    qt5ct/qt6ct, Kvantum), `50-udisks.rules`, `motd`, and
-   `backgrounds/d77.png` (the wallpaper, sourced from d77devuan so any
-   future non-sway variant gets it too), installed to `/etc/skel`.
-   Sources: `~/d77void/common/config/*` and `~/d77devuan/pkg/
-   d77-sway-skel/skel/.config/{foot,backgrounds}` (read-only
+   `backgrounds/d77.png` (the wallpaper, sourced from an existing
+   sway config so any future non-sway variant gets it too), installed
+   to `/etc/skel`. Sources: `~/d77void/common/config/*` and an
+   existing sway skel's `.config/{foot,backgrounds}` (read-only
    references -- the d77void-exception applies here since this is a
    *different* repo).
 2. **`pkg/h77-sway-dots`** -- sway/swaylock/swaync dotfiles (from
@@ -306,7 +307,7 @@ part of the live's own package set -- which includes `h77-dots`/
 `h77-sway-dots` (and the kernel, and the bootloader packages from
 `base-live`, and everything else in `mklive-image.sh`'s sway `PKGS`),
 since they're installed on the live itself. This is the exact same
-lesson d77alpine learned the hard way (copy the live literally instead
+lesson learned the hard way elsewhere (copy the live literally instead
 of re-installing via the package manager) -- except here it's already
 built into upstream's own installer, natively.
 
@@ -360,16 +361,15 @@ therefore deliberately does NOT set `PACKAGES` at all.
 
 ### Implemented later the same night: publish h77-dots/h77-sway-dots/h77-installer as a GitHub Release
 
-Done: `.github/workflows/build-h77-pkgs.yml` (mirrors d77crux-live's
-own `build-kernel.yml` almost line for line -- checkout, build the
+Done: `.github/workflows/build-h77-pkgs.yml` (build once in CI, publish
+once per version rather than every push -- checkout, build the
 container, run it `--privileged` since GitHub-hosted runners are full
 VMs and allow that, publish to a fixed `h77-pkgs` release tag,
-deleting+recreating it if it already exists, same as d77crux-kernel
-does per-version) + `iso/fetch-pkgs.sh` (mirrors `scripts/
-fetch-kernel.sh`: `gh release download`, verify `SHA256SUMS`, populate
-exactly what `iso/mklive-d77.sh` already expects --
-`cbuild-out/hybrid/x86_64/` + `cbuild-out/*.rsa.pub`). Triggers on
-`workflow_dispatch` or a push touching `pkg/**`.
+deleting+recreating it if it already exists) + `iso/fetch-pkgs.sh`
+(`gh release download`, verify `SHA256SUMS`, populate exactly what
+`iso/mklive-d77.sh` already expects -- `cbuild-out/hybrid/x86_64/` +
+`cbuild-out/*.rsa.pub`). Triggers on `workflow_dispatch` or a push
+touching `pkg/**`.
 
 **Confirmed working end to end** after three real failures, each fixed
 by an actual CI run, not guessed:
@@ -398,13 +398,11 @@ h77-pkgs --repo dani-77/hybrid-d77` confirms it.
 
 ### Original note (superseded by the above, kept for context)
 
-User's own idea, same pattern already proven in `d77crux-live` for
-`d77crux-kernel` -- confirmed by reading `d77crux-live/scripts/
-fetch-kernel.sh`: a GitHub Actions workflow in the `d77crux` repo
-builds the kernel and publishes it as a release asset (`.pkg.tar.xz` +
-`.sha256`); the remaster's own `fetch-kernel.sh` does `gh release
-download` before assembling the ISO, instead of compiling locally
-every time.
+User's own idea, the same real pattern used elsewhere: a GitHub
+Actions workflow builds a heavy artifact and publishes it as a release
+asset (`.pkg.tar.xz` + `.sha256`), and a small `fetch-*.sh` script does
+`gh release download` before assembling the ISO, instead of compiling
+locally every time.
 
 Applied here, this would solve two things at once:
 - Skip re-running `container/cbuild.Containerfile` (bootstrap + build,
@@ -546,10 +544,9 @@ observed on actual hardware, not assumed):
    through yambar before shipping it (flagged as an open TODO earlier
    in this file, and it caught up).
 
-User's call: drop yambar, go back to waybar using this project's own
-real, already-working d77devuan config (`pkg/d77-sway-skel/skel/
-.config/waybar`) instead of hand-writing a new one. Ported as directly
-as reasonable:
+User's call: drop yambar, go back to waybar using an existing, already-
+working sway config's own `waybar` setup instead of hand-writing a new
+one. Ported as directly as reasonable:
 
 - `config`/`style.css`/`d77.css`/`mediaplayer.py`/`wittr.sh` copied
   over unmodified except the font (`style.css`: `Hack Nerd Font`,
@@ -613,10 +610,10 @@ was NEVER added to `mklive-image.sh`'s `PKGS` -- silently broken.
 can ever prompt for a password no matter what else is enabled. Also:
 `swaylock/config`'s `image=~/Wallpaper/background2_locked.png` pointed
 at a top-level `~/Wallpaper/` dir this project never creates (a
-d77void-ism, not ported correctly the first time) -- fixed the way
-d77devuan's own real config does it: the lock image lives inside
-`.config/swaylock/` itself, copied in from d77devuan's own
-`pkg/d77-sway-skel`, `image=~/.config/swaylock/background2_locked.png`.
+d77void-ism, not ported correctly the first time) -- fixed the way an
+existing, real sway config does it: the lock image lives inside
+`.config/swaylock/` itself, copied in from that same source,
+`image=~/.config/swaylock/background2_locked.png`.
 
 **Confirmed genuinely absent, no substitute added** (checked, not
 assumed): `alsa-tools`, `cups-browsed`, `plymouth` (no boot-splash
@@ -1042,16 +1039,16 @@ working end to end:
   independent of elogind/cgroups -- only fires under sway.
 - Only Suspend had an icon in that same menu (confirmed via hexdump,
   not guessed) -- Logout/Reboot/Shutdown had none. Pulled the missing
-  three from this project's own real, working reference, d77devuan's
-  fuzzel-power-menu: Font Awesome codepoints (`fonts-font-awesome-otf`
-  already in this image's packages) U+F2F5 (sign-out), U+F021
-  (refresh), U+F011 (power-off). Checked d77arch's and d77obarun's own
-  real (not stale) fuzzel-power-menu scripts too, per the user's own
-  request -- neither has this same partial-icon bug (d77arch uses one
-  icon on the fuzzel prompt only, deliberately minimal; d77obarun's is
-  architecturally different -- `66-userctl`, qtile-specific logout --
-  and has zero icons anywhere). User's call: leave both as they are,
-  this was cosmetic, not a bug fix, for either.
+  three from an existing, real, working fuzzel-power-menu reference:
+  Font Awesome codepoints (`fonts-font-awesome-otf` already in this
+  image's packages) U+F2F5 (sign-out), U+F021 (refresh), U+F011
+  (power-off). Checked two other real (not stale) fuzzel-power-menu
+  scripts too, per the user's own request -- neither has this same
+  partial-icon bug (one uses a single icon on the fuzzel prompt only,
+  deliberately minimal; the other is architecturally different --
+  a different init's own power-control tool, desktop-specific logout
+  -- and has zero icons anywhere). User's call: leave both as they
+  are, this was cosmetic, not a bug fix, for either.
 - GTK2 apps had no theme at all until the user hand-ran `nwg-look` --
   there was no `skel/.gtkrc-2.0` (GTK2's own real per-user config file,
   confirmed via GTK 2.24's real `gtkrc.c`: read from `$HOME` root, not

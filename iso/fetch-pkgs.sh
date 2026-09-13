@@ -2,8 +2,7 @@
 # hybrid-d77 :: fetch the latest h77-dots/h77-sway-dots/h77-installer
 # build from the "h77-pkgs" GitHub Release (built by
 # .github/workflows/build-h77-pkgs.yml) instead of running
-# container/cbuild.Containerfile locally every time. Same pattern as
-# d77crux-live's own scripts/fetch-kernel.sh.
+# container/cbuild.Containerfile locally every time.
 #
 # Populates exactly what iso/mklive-d77.sh already expects:
 #   cbuild-out/hybrid/x86_64/{*.apk,APKINDEX.tar.gz}

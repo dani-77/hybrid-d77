@@ -1,11 +1,9 @@
 name: Build hybrid-d77 packages
 
 # Builds h77-dots/h77-sway-dots/h77-installer via container/cbuild.Containerfile
-# (real cports/cbuild, not guessed) and publishes them as a GitHub Release --
-# same pattern as d77crux-live's own d77crux-kernel workflow
-# (github.com/dani-77/d77crux, .github/workflows/build-kernel.yml): build once
-# in CI, pin/fetch the release asset locally instead of rebuilding from
-# source every time. iso/fetch-pkgs.sh is the consumer side.
+# (real cports/cbuild, not guessed) and publishes them as a GitHub Release:
+# build once in CI, pin/fetch the release asset locally instead of
+# rebuilding from source every time. iso/fetch-pkgs.sh is the consumer side.
 #
 # The build itself needs --privileged (bwrap's own nested mount() calls
 # fail without it under a container's default capability/seccomp set --

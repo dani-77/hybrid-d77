@@ -1,5 +1,5 @@
 // -*- mode: jsonc -*-
-// hybrid-d77 waybar -- ported from d77devuan's own config (itself
+// hybrid-d77 waybar -- ported from an existing sway config (itself
 // generated from d77void/common/waybar/config.jsonc), unmodified apart
 // from the font (see style.css). 2026-09-12: replaces this project's
 // earlier yambar config -- yambar's `battery` module hardcoded BAT0

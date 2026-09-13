@@ -15,18 +15,17 @@
   *format* as Alpine, a different, incompatible `apk-tools` build and
   build system, **cports**/`cbuild`). The "hybrid" in the name is that: a
   genuine hybrid of the BSD and Linux worlds, not just a marketing word.
-- Named deliberately **without** "chimera" in it — unlike the rest of the
-  d77 family (`d77void`, `d77arch`, ...), this one is meant to reach
-  people outside personal/internal use, and staying clear of the base
-  distro's own name avoids a repeat of `d77void` staying permanently tied
-  to Void's name (also a real trademark-policy concern, not just taste).
-- Init is **dinit**, not OpenRC/systemd/s6 like the rest of the family —
-  per-package dinit service files ship as `<pkg>-dinit` subpackages
-  (`greetd-dinit`, `udiskie-dinit`, `networkmanager-dinit`, ...), and not
-  every service self-enables on install (`dbus`, `elogind` do; `polkit`,
-  `networkmanager`, `seatd`, `rtkit`, `syslog-ng` don't) — see
-  `docs/NOTES.md` for what that means for the installer.
-- **Waybar**, ported from this project's own d77devuan config — an
+- Named deliberately **without** "chimera" in it — unlike `d77void`
+  (permanently tied to Void's own name), this one deliberately stays
+  clear of the base distro's own name. Not just personal preference —
+  there's a real trademark-policy concern too.
+- Init is **dinit**, not systemd — per-package dinit service files ship
+  as `<pkg>-dinit` subpackages (`greetd-dinit`, `udiskie-dinit`,
+  `networkmanager-dinit`, ...), and not every service self-enables on
+  install (`dbus`, `elogind` do; `polkit`, `networkmanager`, `seatd`,
+  `rtkit`, `syslog-ng` don't) — see `docs/NOTES.md` for what that means
+  for the installer.
+- **Waybar**, ported from an existing, already-working sway config — an
   earlier yambar config was tried first and dropped after real bugs
   showed up on an actual boot (hardcoded battery name, unreliable
   refresh, the wireless display vanishing outright).
@@ -90,14 +89,14 @@ pkg/h77-install-scripts/       cports package for the patched
 .github/workflows/
   build-h77-pkgs.yml            builds every pkg/h77-* via cbuild in CI and
                                publishes them as .apk files on a GitHub
-                               Release (tag h77-pkgs) -- mirrors
-                               d77crux-live's own build-kernel.yml
+                               Release (tag h77-pkgs) -- build once,
+                               fetch/pin the release asset instead of
+                               rebuilding from source every time
 iso/mklive-d77.sh              wrapper around vendor/chimera-live/mklive.sh,
                                builds the "sway" variant (main + user repos,
                                plus this project's own local package repo)
 iso/fetch-pkgs.sh              downloads the latest h77-pkgs release
                                instead of rebuilding locally every time
-                               (mirrors d77crux-live's fetch-kernel.sh)
 container/                     Containerfile + entrypoint (builds the ISO)
                                and cbuild.Containerfile + cbuild-entrypoint.sh
                                (builds pkg/h77-* into real .apk files via

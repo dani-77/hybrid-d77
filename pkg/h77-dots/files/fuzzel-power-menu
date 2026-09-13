@@ -3,10 +3,9 @@
 # 2026-09-13: only Suspend had an icon (a Material Design Icons/nf-md
 # codepoint, U+F04B2, via fonts-nerd-hack); Logout/Reboot/Shutdown had
 # none at all. Confirmed by hexdump, not guessed. Pulled the missing
-# three from this project's own real, working reference -- d77devuan's
-# fuzzel-power-menu (pkg/d77-sway-skel/bin/fuzzel-power-menu) -- Font
-# Awesome codepoints (U+F0xx range, fonts-font-awesome-otf already in
-# this image's PKGS): U+F2F5 (sign-out) for Logout, U+F021 (refresh)
+# three from an existing, real, working fuzzel-power-menu reference --
+# Font Awesome codepoints (U+F0xx range, fonts-font-awesome-otf already
+# in this image's PKGS): U+F2F5 (sign-out) for Logout, U+F021 (refresh)
 # for Reboot, U+F011 (power-off) for Shutdown. Suspend's own existing
 # icon was left as is -- it already worked, this only fills the gaps.
 SELECTION=$(echo -e "󰒲 Suspend\n Logout\n Reboot\n Shutdown" | fuzzel -d -p " " -w 15 -l 4)
