@@ -69,6 +69,33 @@
 # at every future boot to fix this after the fact, and the vendored
 # script is already precedented as a patch point (mklive-image.sh's
 # own "sway" case).
+#
+# 2026-09-13, after a full real-hardware install: user had to hand-run
+# nwg-look to get GTK2 apps themed at all -- there was no skel/.gtkrc-2.0
+# (GTK2's own real config file, confirmed via GTK 2.24's real gtkrc.c
+# source: read from $HOME root, NOT .config, auto-added as a default rc
+# file by gtk_rc_init) to begin with, only .config/gtk-2.0/
+# gtkfilechooser.ini (unrelated -- file-chooser recent-dirs state, not
+# theming). Added skel/.gtkrc-2.0, same values as gtk-3.0/4.0's own
+# settings.ini (Breeze-Dark, Papirus-Dark, Hack 10) for consistency
+# across all three GTK versions. The `include` line points at
+# ".gtkrc-2.0.mine" (relative, no leading "~" or hardcoded username) --
+# checked GTK 2.24's real parse_include_file() in gtkrc.c: it does NOT
+# expand "~" at all (only checks g_path_is_absolute(), so a leading "~"
+# would be treated as a literal path component and never resolve); a
+# plain relative filename, on the other hand, is looked up relative to
+# the currently-parsing rc file's own directory (here, wherever this
+# very skel/.gtkrc-2.0 file ends up per-user), which correctly resolves
+# under ANY username -- unlike d77void's own real .gtkrc-2.0, which
+# hardcodes "/home/anon/.gtkrc-2.0.mine" and would silently point at
+# the wrong home dir for any other username.
+#
+# Same round: h77-dots' own files/motd trimmed -- the ESP/BIOS-MBR
+# partitioning explanation was redundant once Partition/Filesystems
+# were restored as real interactive, guided steps inside the installer
+# itself (h77-installer's own pre-flight dialog already covers this) --
+# user's own call: "isso é feito sozinho e bem feito," no need to
+# pre-explain it in the motd too.
 
 pkgname = "h77-dots"
 pkgver = "0.1.0"

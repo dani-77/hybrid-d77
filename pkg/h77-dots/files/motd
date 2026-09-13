@@ -6,8 +6,6 @@ Welcome to hybrid-d77 (Chimera Linux + Sway).
 
   To install to disk: doas h77-installer
 
-  Partitioning and filesystem setup (format + mount) are both steps
-  inside the installer itself -- no need to do that by hand first.
-  On a UEFI machine you'll need a FAT32 ESP among the partitions; on
-  BIOS/MBR none is needed.
+  Partitioning and formatting are guided steps inside the installer
+  itself -- nothing to prepare by hand first.
 
