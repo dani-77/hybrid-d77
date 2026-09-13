@@ -16,4 +16,24 @@
 # (e.g. for a network-source install where those dialogs weren't shown
 # the same way, or to reapply after the fact) -- see that file's own
 # header comment.
+#
+# 2026-09-13: chimera-installer's own custom Partition/Filesystems
+# steps (menu_hybrid_partition/menu_hybrid_filesystems) were reverted
+# after real hardware testing (see h77-install-scripts' own
+# template.py) -- partitioning/formatting/mounting is manual again,
+# plain upstream convention. User's own suggestion: put a clear
+# reminder right before the installer itself launches, not just in
+# motd (easy to have scrolled past by the time someone actually runs
+# this), so it's the last thing seen before SystemRoot asks for a
+# path. `dialog` is already a hard package dependency of this image
+# (see mklive-image.sh's sway PKGS).
+dialog --colors --no-shadow --backtitle "Hybrid D77 installer" \
+    --title "Before you start" --msgbox \
+    "Partition and format the target disk by hand first (cfdisk/fdisk + mkfs), \
+then mount it all under /mnt/root -- the root filesystem AT /mnt/root \
+itself, anything else (e.g. an EFI system partition) under \
+/mnt/root/<path>. UEFI needs a FAT32 ESP; BIOS/MBR needs none. \
+SystemRoot, later in this installer, expects exactly /mnt/root." \
+    12 74
+
 exec chimera-installer -c /etc/h77/installer.conf "$@"

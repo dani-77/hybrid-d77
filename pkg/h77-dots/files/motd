@@ -6,3 +6,10 @@ Welcome to hybrid-d77 (Chimera Linux + Sway).
 
   To install to disk: doas h77-installer
 
+  Before running it, partition and format the target disk by hand
+  (cfdisk/fdisk + mkfs), then mount it all under /mnt/root -- the
+  root filesystem AT /mnt/root itself, everything else (e.g. an EFI
+  system partition) under /mnt/root/<path>. On a UEFI machine the ESP
+  must be a FAT32 partition; on BIOS/MBR none is needed. SystemRoot
+  in the installer expects exactly /mnt/root.
+
