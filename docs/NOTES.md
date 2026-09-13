@@ -1069,3 +1069,26 @@ working end to end:
   `menu_install` copies over `$sysroot/etc/motd` as the very last real
   step -- the live motd's login credentials and "doas h77-installer"
   instructions are both wrong once actually installed to disk.
+
+## 2026-09-13, later still :: mobile-session PR, three small real fixes
+
+A separate Claude Code session, done via phone, opened
+`claude/sway-config-skel-rebuild-7sb1w5` and merged PR #1 into master
+directly on GitHub while this session was mid-flight on other work.
+Reviewed afterward, all three genuinely good:
+
+- `sway: gtk-theme Adwaita-dark -> Breeze-Dark` -- a real gap this
+  session's own earlier Breeze-Dark cleanup (gtk-3.0/4.0 settings.ini,
+  skel/.gtkrc-2.0) had missed: sway's own config sets GTK theme/icon
+  theme a SECOND, independent way, via `gsettings` (`exec_always { ...
+  }`, for apps that read gsettings/XSettings rather than any gtkrc/
+  settings.ini file directly) -- that block was still hardcoded to the
+  old "Adwaita-dark" default.
+- `sway: exec xdg-user-dirs-update / xdg-user-dirs-gtk-update on
+  start` -- both packages were already in mklive-image.sh's sway PKGS,
+  just never actually invoked at session start.
+- `waybar: bump base font-size 10px -> 12px` -- cosmetic.
+
+Reviewed for consistency with the rest of this project (both the
+theming conventions and the privacy cleanup from earlier the same
+day): clean on both counts, nothing to fix.
