@@ -102,7 +102,47 @@ container/                     Containerfile + entrypoint (builds the ISO)
                                (builds pkg/h77-* into real .apk files via
                                cports/cbuild) -- both via sudo podman, FROM
                                Chimera's own official container images
+build.sh                       one command, whole pipeline (see Build below)
 docs/NOTES.md                  field notes -- read before touching the build
+```
+
+## Build
+
+Two containers, in order: `cbuild` builds `pkg/h77-*` into real `.apk`
+files (cbuild itself refuses to run as root); the ISO container then
+consumes those and runs `mklive.sh` (needs root, for `mount(8)`).
+
+### From any host (rootful container)
+
+```
+./build.sh          # both containers, in order -> iso/*.iso
+```
+
+Needs docker or `sudo podman` (rootless podman won't do the `mount(8)`
+work the ISO half needs). Each step can also be run by hand instead,
+same containers, same images:
+
+```
+sudo podman build -t hybrid-d77-cbuild -f container/cbuild.Containerfile .
+sudo podman run --rm --privileged --security-opt label=disable \
+    -v "$PWD:/src" -w /src hybrid-d77-cbuild
+
+sudo podman build -t hybrid-d77-build -f container/Containerfile .
+sudo podman run --rm --privileged --security-opt label=disable \
+    -v "$PWD:/src" -w /src hybrid-d77-build
+```
+
+Or skip the `cbuild` step entirely and pull the latest `h77-*`
+packages already built by CI instead: `iso/fetch-pkgs.sh`, then just
+the ISO half above.
+
+### Writing the result to a USB drive
+
+```
+lsblk                                                   # confirm the device
+sudo umount /run/media/$USER/* 2>/dev/null               # if auto-mounted
+sudo dd if=iso/chimera-linux-x86_64-LIVE-*.iso of=/dev/sdX \
+    bs=4M status=progress conv=fsync && sync
 ```
 
 ## Status

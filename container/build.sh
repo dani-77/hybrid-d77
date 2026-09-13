@@ -1,6 +1,13 @@
 #!/bin/sh
-# Build the official gnome hybrid-d77/chimera-live test ISO from any host
-# via a container, rootful (chroot/mount work needs it).
+# Builds ONLY the ISO half of the pipeline (via container/Containerfile),
+# rootful (chroot/mount work needs it). Needs cbuild-out/hybrid/ to
+# already exist (either from container/cbuild.Containerfile, or from
+# iso/fetch-pkgs.sh) -- iso/mklive-d77.sh refuses to run without it.
+#
+# For the whole pipeline in one command (cbuild + this), use the repo
+# root's own ./build.sh instead -- this script is what it calls for
+# the ISO half; kept standalone too for anyone who wants to run just
+# this step by hand (e.g. after fetch-pkgs.sh instead of cbuild).
 #
 #   container/build.sh                 # wrapper: builds image + runs rootful
 #   REBUILD=1 container/build.sh       # rebuild the image first

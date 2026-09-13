@@ -1092,3 +1092,45 @@ Reviewed afterward, all three genuinely good:
 Reviewed for consistency with the rest of this project (both the
 theming conventions and the privacy cleanup from earlier the same
 day): clean on both counts, nothing to fix.
+
+## 2026-09-13, even later :: added build.sh, one command for the whole pipeline
+
+User tried to build on their own, expecting `container/build.sh` alone
+to work the way d77devuan's own single `container/build.sh` does
+(build image + run rootful, one script, one step). It didn't: this
+project's own `container/build.sh` only ever handled the ISO half
+(`container/Containerfile`) -- it never ran the `cbuild` container
+first, and `iso/mklive-d77.sh` (called from inside it) refuses to run
+without `cbuild-out/hybrid/` already populated. No script existed to
+orchestrate both containers in order.
+
+Added `build.sh` at the repo root: builds and runs the `cbuild`
+container (h77-dots/h77-sway-dots/h77-installer/h77-install-scripts ->
+real `.apk`s), then builds and runs the ISO container against that
+output, producing a checksummed ISO under `iso/`. `container/build.sh`
+itself untouched in substance -- just its header comment updated to
+say it's the ISO-only half and point at the new top-level script; the
+real cbuild-related files this project's own CI workflow also depends
+on (`container/cbuild.Containerfile`, `container/cbuild-entrypoint.sh`)
+were NOT touched, per the user's own explicit caution about not
+breaking that path.
+
+Two real bugs caught by actually running the new script, not assumed:
+- `rm -rf vendor/chimera-live/build` (leftover from a previous ISO
+  build, owned by root since that container runs rootful) fails with
+  "Permissão recusada" the next time this runs as a normal user --
+  needed `sudo rm -rf` instead, same as this session's own manual
+  workflow had been doing by hand every round.
+- The final `sha256sum -c` failed to find the checksum file: it's
+  written by `container/entrypoint.sh` itself as `cd iso && sha256sum
+  "$f" > "$f.sha256"`, so it holds a bare filename -- verifying it
+  needs to run from inside `iso/` too, not the repo root. The exact
+  same relative-path mistake this session had already hit once by
+  hand earlier the same day.
+
+User's own call: no `--dd`/USB-writing step in the script itself ("é
+excesso de zelo") -- that part stays a manual, explicit step, same
+`lsblk`/`umount`/`dd` sequence used by hand throughout this whole
+project. Documented in a new README "Build" section, modeled directly
+on d77devuan's own (native-host / rootful-container split), per user
+request.
