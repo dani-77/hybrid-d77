@@ -134,4 +134,12 @@ found and fixed via actual hardware testing along the way.
   re-read side by side with this project's own first attempt after that
   one didn't hold up on real hardware.
 
+## License
+
+This project's own original work (`pkg/h77-*`, `container/`, `iso/`,
+docs) is [MIT](LICENSE). The vendored subtrees under `vendor/` keep
+their own upstream licenses in full — GPLv3 for `chimera-live`,
+BSD-2-Clause for `chimera-install-scripts` — see each one's own
+`COPYING.md`.
+
 ## Not affiliated with the Chimera Linux project.
