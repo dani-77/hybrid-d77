@@ -114,44 +114,22 @@ consumes those and runs `mklive.sh` (needs root, for `mount(8)`).
 
 ### On a Chimera/hybrid-d77 host
 
-```sh
-# cbuild half -- as your normal, non-root user (cbuild refuses root)
-doas apk add python git openssl bubblewrap
-git clone --depth 1 https://github.com/chimera-linux/cports ~/cports
-mkdir -p ~/cports/hybrid
-cp -a pkg/h77-dots pkg/h77-sway-dots pkg/h77-installer pkg/h77-install-scripts \
-    ~/cports/hybrid/
-cd ~/cports
-./cbuild keygen                                  # only if no etc/keys/*.rsa yet
-python3 - <<'EOF'                                 # cbuild only builds main/user by default
-import configparser
-cfg = configparser.ConfigParser()
-cfg.read("etc/config.ini")
-cfg["build"]["categories"] = "main user hybrid"
-cfg["build"]["linter"] = "none"                    # not installed, fine for these two
-cfg["build"]["formatter"] = "none"
-with open("etc/config.ini", "w") as f:
-    cfg.write(f)
-EOF
-./cbuild bootstrap                                # binary bootstrap, once
-for p in h77-dots h77-sway-dots h77-installer h77-install-scripts; do
-    ./cbuild pkg "hybrid/$p"
-done
-mkdir -p /path/to/hybrid-d77/cbuild-out
-cp -a packages/hybrid /path/to/hybrid-d77/cbuild-out/
-cp etc/keys/*.pub /path/to/hybrid-d77/cbuild-out/
+`iso/mklive-d77.sh` is real Chimera's own `mklive.sh`, meant to run ON
+Chimera -- no container needed at all when the host already is one. It
+just needs a local apk repo at `cbuild-out/hybrid/` to pull `h77-*`
+from:
 
-# ISO half -- needs root, for mount(8)
-cd /path/to/hybrid-d77
-doas ./iso/mklive-d77.sh
+```sh
+./iso/fetch-pkgs.sh        # pulls the latest h77-* build from GitHub
+doas ./iso/mklive-d77.sh   # needs root, for mount(8)
 ```
 
-This is exactly what `container/cbuild-entrypoint.sh` and
-`container/entrypoint.sh` do inside their own containers, just run
-directly on a real Chimera/hybrid-d77 host instead -- no container
-needed at all when the host already IS Chimera. See either script for
-the full reasoning behind each step (why `cbuild keygen` is
-conditional, why `categories` needs widening, etc.).
+Building `h77-*` yourself instead of fetching CI's build (e.g. to test
+a local change) needs `cbuild`/cports, real dependencies most hosts
+won't already have installed -- `container/cbuild-entrypoint.sh` is
+the exact, real recipe (clone cports, sync `pkg/h77-*` in as a
+"hybrid" category, `cbuild bootstrap` + `cbuild pkg` per package); read
+it before reproducing those steps by hand.
 
 ### From any host (rootful container)
 

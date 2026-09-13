@@ -1148,3 +1148,27 @@ and container/entrypoint.sh already run inside their own containers
 package, then doas ./iso/mklive-d77.sh for the ISO half), just run
 directly on a real Chimera/hybrid-d77 host -- no container needed at
 all once the host already IS Chimera.
+
+## 2026-09-13, correction :: the native-host section was overcomplicated
+
+User's own reaction to the previous entry's native-host section:
+"está bem assim mas não está bem" -- reproducing the full
+cbuild/cports pipeline by hand was the wrong default to lead with,
+even though every step in it was real. Pointed at how much simpler
+building is on d77void by comparison (a single mklive-equivalent
+invocation against an already-published package repo, no local
+rebuild of custom packages needed for a normal build).
+
+Simplified to what iso/mklive-d77.sh actually needs: it's real
+Chimera's own mklive.sh, built to run ON Chimera -- no container
+required once the host already is one -- and it only needs a local apk
+repo at cbuild-out/hybrid/ to pull h77-* from. `iso/fetch-pkgs.sh`
+already exists for exactly that (pulls the latest CI build from
+GitHub). So the real, simple native-host path is just:
+
+    ./iso/fetch-pkgs.sh
+    doas ./iso/mklive-d77.sh
+
+Building h77-* yourself (the old section's content) is still real and
+still documented, but now clearly marked as the secondary path for
+testing a local package change, not the default flow.
