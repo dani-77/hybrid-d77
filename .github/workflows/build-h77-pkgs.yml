@@ -88,10 +88,22 @@ jobs:
           # then HTTP 502 -- with the actual build already done and
           # fine both times. gh itself has no built-in retry for this,
           # so wrap the whole view/delete/create sequence in one.
+          # Real bug in an earlier version of this retry, caught by the
+          # very next CI run: GitHub Actions runs `run:` steps under
+          # `bash -e` by default, and `gh release view ... && gh
+          # release delete ...` below was a plain statement, NOT an if/
+          # while/until condition -- the one context `-e` exempts from
+          # triggering an exit on failure. A transient error on the
+          # delete call killed the whole step instantly, before the
+          # retry loop's own logic ever ran. Fixed by putting view in
+          # its own `if` and `|| true`-ing delete, so no individual
+          # command in the loop body can trigger an early exit -- only
+          # the loop finishing (success or all 5 attempts) decides that.
           n=0
           until [ "$n" -ge 5 ]; do
-            gh release view "$tag" >/dev/null 2>&1 \
-              && gh release delete "$tag" --yes --cleanup-tag
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release delete "$tag" --yes --cleanup-tag || true
+            fi
             if gh release create "$tag" \
               --title "hybrid-d77 packages (h77-dots, h77-sway-dots, h77-installer)" \
               --notes "Built by ${{ github.workflow }} from ${{ github.sha }}. Consumed by iso/fetch-pkgs.sh, not meant to be installed by hand." \
