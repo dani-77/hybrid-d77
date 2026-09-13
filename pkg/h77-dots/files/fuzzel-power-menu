@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 
-SELECTION=$(echo -e "󰒲 Suspend\n Logout\n Reboot\n Shutdown" | fuzzel -d -p " " -w 15 -l 4)
+# 2026-09-13: only Suspend had an icon (a Material Design Icons/nf-md
+# codepoint, U+F04B2, via fonts-nerd-hack); Logout/Reboot/Shutdown had
+# none at all. Confirmed by hexdump, not guessed. Pulled the missing
+# three from this project's own real, working reference -- d77devuan's
+# fuzzel-power-menu (pkg/d77-sway-skel/bin/fuzzel-power-menu) -- Font
+# Awesome codepoints (U+F0xx range, fonts-font-awesome-otf already in
+# this image's PKGS): U+F2F5 (sign-out) for Logout, U+F021 (refresh)
+# for Reboot, U+F011 (power-off) for Shutdown. Suspend's own existing
+# icon was left as is -- it already worked, this only fills the gaps.
+SELECTION=$(echo -e "󰒲 Suspend\n Logout\n Reboot\n Shutdown" | fuzzel -d -p " " -w 15 -l 4)
 
 reboot_confirm() {
 	CONFIRM=$(echo -e "confirm reboot\ncancel reboot" | fuzzel -d -p " " -w 15 -l 2)
@@ -27,7 +36,7 @@ case $SELECTION in
 	"󰒲 Suspend")
 		loginctl suspend
 		;;
-	" Logout")
+	" Logout")
 		# WM-agnostic first attempt: end this login session via elogind
 		# (SIGTERM -> SIGKILL to the session's cgroup). Falls back to the
 		# whole user if the session id isn't in the env.
@@ -54,10 +63,10 @@ case $SELECTION in
 		loginctl terminate-session "${XDG_SESSION_ID:-}" 2>/dev/null || loginctl terminate-user "$USER"
 		[ -n "${SWAYSOCK:-}" ] && command -v swaymsg >/dev/null 2>&1 && swaymsg exit
 		;;
-	" Reboot")
+	" Reboot")
 		reboot_confirm
 		;;
-	" Shutdown")
+	" Shutdown")
 		shutdown_confirm
 		;;
 	*)
