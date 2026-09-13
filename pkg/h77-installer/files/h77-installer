@@ -36,4 +36,24 @@ itself, anything else (e.g. an EFI system partition) under \
 SystemRoot, later in this installer, expects exactly /mnt/root." \
     12 74
 
+# 2026-09-13, same day: real hardware report -- the Groups/Services
+# checklists (both real, unmodified patches, confirmed by re-reading
+# the source and the git diff of every recent commit) appeared to be
+# "desligados" (turned off). Root cause, found by the user directly:
+# upstream chimera-installer's own FIRST screen asks "Do you wish to
+# fetch and run the latest available version? (needs network)?" --
+# answering yes does a real `fetch` of the pristine, unmodified
+# chimera-installer straight from
+# raw.githubusercontent.com/chimera-linux/chimera-install-scripts and
+# re-execs INTO IT (`exec /bin/sh "$INSTALLER_FILE"`), completely
+# discarding every one of this project's own patches (Groups,
+# Services, the reminder above, the title rename, all of it) for the
+# rest of that run. Upstream already provides the fix for exactly this
+# case: if $SKIP_UPDATE_CHECK is non-empty, that whole prompt is
+# skipped outright (confirmed in chimera-installer's own source, right
+# before the "entry point" section) -- no need to patch the check
+# itself, just set the env var here so our own wrapper never offers to
+# self-replace with vanilla upstream.
+export SKIP_UPDATE_CHECK=1
+
 exec chimera-installer -c /etc/h77/installer.conf "$@"

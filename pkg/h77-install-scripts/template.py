@@ -139,6 +139,22 @@
 # on the same real hardware and were kept, per the user's own explicit
 # confirmation ("a rede ficou bem").
 #
+# Same day, user report: Groups/Services checklists (untouched by any
+# of the above -- confirmed via `git diff`, not guessed) appeared
+# "desligados" (turned off) on a later test. Root cause, found by the
+# user directly: upstream chimera-installer's own very first screen
+# asks to fetch-and-run the latest version from
+# raw.githubusercontent.com/chimera-linux/chimera-install-scripts --
+# answering yes re-execs into that PRISTINE, unpatched copy for the
+# rest of the run, silently discarding every patch here (Groups,
+# Services, the reminder, the title, all of it). This script itself
+# was never touched for that -- upstream already gates the whole
+# prompt behind $SKIP_UPDATE_CHECK (skipped if non-empty, confirmed in
+# its own source). Fixed in the one place that actually needed it:
+# h77-installer's own wrapper now `export SKIP_UPDATE_CHECK=1` before
+# exec'ing chimera-installer, so our own patches can never be silently
+# replaced by vanilla upstream mid-run.
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --
