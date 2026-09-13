@@ -66,6 +66,41 @@
 # "usr/share/keymaps/{sun,amiga,...}" -- Chimera's real path is
 # /usr/share/keymaps, no "kbd/" component. Fixed.
 #
+# Same test round, two more real bugs (screenshots): the Filesystems
+# partition picker showed a literal "?" for every single entry, and
+# separately SystemRoot failed right after ("the system root is
+# invalid") even though Filesystems had just formatted+mounted /mnt/
+# root. Root-caused for real (not guessed) by running lsblk locally
+# with the exact same flags: `lsblk -pno NAME,TYPE` on a disk with
+# more than one partition prefixes the NAME column with tree-drawing
+# glyphs by default (e.g. "└─/dev/sda1", confirmed via a real `lsblk
+# -pno NAME,TYPE` run on a multi-partition disk) -- that corrupted
+# string is what menu_hybrid_filesystems's loop was storing as
+# $_hd77_part. Two real consequences from the ONE root cause: (1)
+# `lsblk -no SIZE "└─/dev/sda1"` fails outright ("não é um
+# dispositivo de bloco" / not a block device), so $_hd77_size came
+# back empty every time -> the "?" fallback; (2) the corrupted path
+# is what got written into HD77_FS_FILE and later handed to mkfs/
+# mount, so those failed silently against a nonexistent device name
+# too, meaning /mnt/root was never actually mounted by the time
+# SystemRoot's own `mountpoint -q` check ran. Fixed by adding `-l`
+# (list mode, confirmed via a real side-by-side lsblk run: disables
+# the tree formatting, plain "/dev/sda1") to that one lsblk call --
+# menu_hybrid_partition's own disk-level `lsblk -dno NAME,TYPE` needed
+# no change, confirmed disks never get a tree prefix (nothing above
+# them to draw a branch from). Also dropped --no-tags from the
+# partition-picker ui_dialog call itself: with it, dialog only ever
+# shows the item column (the size, or now-fixed "?"), never the tag
+# (the actual device path) -- so even with the size bug fixed, the
+# user would still have had no way to tell partitions apart by
+# device. User's own real-hardware report: "Assim não dá para
+# perceber."
+#
+# Same round, cosmetic per user request: every dialog's --backtitle/
+# --title said "Chimera Linux installer" (upstream's own string,
+# never changed by any patch so far) -- renamed throughout to "Hybrid
+# D77 installer".
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --

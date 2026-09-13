@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Chimera Linux installer
+# Hybrid D77 installer
 #
 # Copyright 2025 q66 <q66@chimera-linux.org>
 #
@@ -305,7 +305,7 @@ options, the Tab or Left/Right key switches between buttons.${DLG_RESET}"
 ui_dialog() {
     rm -f "$ANSWER_FILE"
     dialog --colors --no-shadow \
-        --backtitle "${DLG_BOLD}${DLG_WHITE}Chimera Linux installer${DLG_RESET}" \
+        --backtitle "${DLG_BOLD}${DLG_WHITE}Hybrid D77 installer${DLG_RESET}" \
         --cancel-label "Back" --aspect 20 "$@" 2>"$ANSWER_FILE"
     return $?
 }
@@ -314,7 +314,7 @@ ui_infobox() {
     local titl="$1"
     shift
     dialog --colors --no-shadow \
-        --backtitle "${DLG_BOLD}${DLG_WHITE}Chimera Linux installer${DLG_RESET}" \
+        --backtitle "${DLG_BOLD}${DLG_WHITE}Hybrid D77 installer${DLG_RESET}" \
         --aspect 20 --title "$titl" --infobox "$@"
 }
 
@@ -323,7 +323,7 @@ ui_programbox() {
     shift
     rm -f "$ANSWER_FILE"
     stdbuf -oL -- "$@" 2>&1 | dialog --colors --no-shadow --keep-tite \
-        --backtitle "${DLG_BOLD}${DLG_WHITE}Chimera Linux installer${DLG_RESET}" \
+        --backtitle "${DLG_BOLD}${DLG_WHITE}Hybrid D77 installer${DLG_RESET}" \
         --cancel-label "Back" --aspect 20 --title "$titl" --programbox 24 80 \
         2>"$ANSWER_FILE"
 }
@@ -332,7 +332,7 @@ ui_programbox() {
 
 usage() {
     if [ -z "$2" ]; then
-        echo "${1}: the Chimera Linux installer"
+        echo "${1}: the Hybrid D77 installer"
     else
         echo "${1}: ${2}"
     fi
@@ -1014,12 +1014,12 @@ menu_hybrid_filesystems() {
 
     while :; do
         _hd77_list=""
-        for _hd77_part in $(lsblk -pno NAME,TYPE 2> /dev/null | awk '$2 == "part" {print $1}'); do
+        for _hd77_part in $(lsblk -plno NAME,TYPE 2> /dev/null | awk '$2 == "part" {print $1}'); do
             _hd77_size=$(lsblk -no SIZE "$_hd77_part" 2> /dev/null)
             _hd77_list="$_hd77_list $_hd77_part ${_hd77_size:-?}"
         done
         _hd77_list="$_hd77_list Done Finish-and-apply"
-        ui_dialog --no-tags --menu \
+        ui_dialog --menu \
             "Select a partition to configure (or Done to format/mount and continue):" \
             20 60 14 $_hd77_list
         [ $? -eq 0 ] || return 1
@@ -1584,7 +1584,7 @@ menu_entry() {
 
     ui_dialog --default-item "$MENU_DEFAULT_ITEM" \
         --extra-button --extra-label "Settings" \
-        --title "Chimera Linux installer" \
+        --title "Hybrid D77 installer" \
         --menu "${DLG_MENU_LABEL}" 10 70 0 \
         "Source" "Installation type (network or local)" \
         "Network" "Configure networking (needed for network source/mirror)" \
