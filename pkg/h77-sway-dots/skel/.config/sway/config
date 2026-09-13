@@ -48,7 +48,7 @@ client.background        $base
 
 ### GTK Theme
 exec_always {
-  gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-dark"
+  gsettings set org.gnome.desktop.interface gtk-theme "Breeze-Dark"
   gsettings set org.gnome.desktop.interface icon-theme "Papirus-Dark"
 }
 
