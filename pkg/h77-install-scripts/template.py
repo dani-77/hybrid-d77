@@ -101,6 +101,44 @@
 # never changed by any patch so far) -- renamed throughout to "Hybrid
 # D77 installer".
 #
+# 2026-09-13, later the same day: real hardware re-test (Toshiba,
+# after the lsblk -l fix above) still failed -- Filesystems reported
+# "no partition was assigned to /" even after the user completed the
+# full cycle correctly (ext4, "/", Yes to format, confirmed directly
+# by the user, not assumed). Added heavier diagnostics first (an
+# explicit "Recorded: ..." confirmation dialog after each partition
+# entry, reading back from HD77_FS_FILE itself rather than trusting
+# the in-memory variables, plus dumping the file's raw content into
+# the final error dialog) to try to catch the real cause. Verified via
+# a real chroot into this project's own built ISO (mounting its erofs
+# live filesystem directly, bind-mounting a writable dir in for /tmp)
+# that Chimera's actual grep (BSD grep, GNU-compatible) and actual
+# /bin/sh both run the exact write-and-check sequence correctly --
+# ruled out as the cause, not guessed.
+#
+# User's own call at that point, invoking the explicit fallback agreed
+# earlier ("se não perceberes como fazer no chimera retrocede e deixa
+# só a rede que está a funcionar correta"): REVERTED
+# menu_hybrid_partition and menu_hybrid_filesystems entirely -- the
+# custom cfdisk-delegation + format/mount checklist never worked
+# reliably on real hardware despite passing every offline/chroot
+# simulation, and destructive disk operations aren't something to
+# leave half-understood. Partition and Filesystems removed from the
+# top-level menu and the MENU_DEFAULT_ITEM chain (UserAccount now
+# leads straight to SystemRoot again, matching pristine upstream's own
+# order exactly -- confirmed against the real upstream source at the
+# pinned commit). SystemRoot itself was NEVER modified by either
+# patch (it's pure unmodified upstream, manual path entry + its own
+# `mountpoint -q` validation) so no changes were needed there -- the
+# expectation going forward is the same as plain upstream
+# chimera-installer: partition and format the disk by hand (cfdisk +
+# mkfs + mount, e.g. from a second TTY) before running the installer,
+# exactly like the real, official Chimera installation docs describe.
+# Network (menu_hybrid_network, real NetworkManager nmtui) and Keymap
+# (menu_hybrid_keymap, the /usr/share/keymaps fix) both tested working
+# on the same real hardware and were kept, per the user's own explicit
+# confirmation ("a rede ficou bem").
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --
