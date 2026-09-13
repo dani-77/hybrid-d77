@@ -112,6 +112,47 @@ Two containers, in order: `cbuild` builds `pkg/h77-*` into real `.apk`
 files (cbuild itself refuses to run as root); the ISO container then
 consumes those and runs `mklive.sh` (needs root, for `mount(8)`).
 
+### On a Chimera/hybrid-d77 host
+
+```sh
+# cbuild half -- as your normal, non-root user (cbuild refuses root)
+doas apk add python git openssl bubblewrap
+git clone --depth 1 https://github.com/chimera-linux/cports ~/cports
+mkdir -p ~/cports/hybrid
+cp -a pkg/h77-dots pkg/h77-sway-dots pkg/h77-installer pkg/h77-install-scripts \
+    ~/cports/hybrid/
+cd ~/cports
+./cbuild keygen                                  # only if no etc/keys/*.rsa yet
+python3 - <<'EOF'                                 # cbuild only builds main/user by default
+import configparser
+cfg = configparser.ConfigParser()
+cfg.read("etc/config.ini")
+cfg["build"]["categories"] = "main user hybrid"
+cfg["build"]["linter"] = "none"                    # not installed, fine for these two
+cfg["build"]["formatter"] = "none"
+with open("etc/config.ini", "w") as f:
+    cfg.write(f)
+EOF
+./cbuild bootstrap                                # binary bootstrap, once
+for p in h77-dots h77-sway-dots h77-installer h77-install-scripts; do
+    ./cbuild pkg "hybrid/$p"
+done
+mkdir -p /path/to/hybrid-d77/cbuild-out
+cp -a packages/hybrid /path/to/hybrid-d77/cbuild-out/
+cp etc/keys/*.pub /path/to/hybrid-d77/cbuild-out/
+
+# ISO half -- needs root, for mount(8)
+cd /path/to/hybrid-d77
+doas ./iso/mklive-d77.sh
+```
+
+This is exactly what `container/cbuild-entrypoint.sh` and
+`container/entrypoint.sh` do inside their own containers, just run
+directly on a real Chimera/hybrid-d77 host instead -- no container
+needed at all when the host already IS Chimera. See either script for
+the full reasoning behind each step (why `cbuild keygen` is
+conditional, why `categories` needs widening, etc.).
+
 ### From any host (rootful container)
 
 ```

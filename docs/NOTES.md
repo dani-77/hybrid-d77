@@ -1134,3 +1134,17 @@ excesso de zelo") -- that part stays a manual, explicit step, same
 project. Documented in a new README "Build" section, modeled directly
 on d77devuan's own (native-host / rootful-container split), per user
 request.
+
+## 2026-09-13, even later still :: README Build section, the missing native-host half
+
+The previous entry's own "modeled on d77devuan's own (native-host /
+rootful-container split)" was only half true at the time -- only the
+container path had actually been written. User caught it: "falta
+escrever como o fazer num sistema instalado chimera ou hybrid." Added
+the native-host subsection: same steps container/cbuild-entrypoint.sh
+and container/entrypoint.sh already run inside their own containers
+(apk add the cbuild deps, clone cports, sync pkg/h77-* in as the
+"hybrid" category, widen etc/config.ini, cbuild bootstrap + pkg per
+package, then doas ./iso/mklive-d77.sh for the ISO half), just run
+directly on a real Chimera/hybrid-d77 host -- no container needed at
+all once the host already IS Chimera.
