@@ -28,10 +28,31 @@ case $SELECTION in
 		loginctl suspend
 		;;
 	" Logout")
-		# WM-agnostic: end this login session via elogind (SIGTERM -> SIGKILL),
-		# whatever the compositor. Falls back to the whole user if the session
-		# id isn't in the env.
+		# WM-agnostic first attempt: end this login session via elogind
+		# (SIGTERM -> SIGKILL to the session's cgroup). Falls back to the
+		# whole user if the session id isn't in the env.
+		#
+		# 2026-09-13: real hardware report on hybrid-d77 -- Suspend/Reboot/
+		# Shutdown all worked, only Logout didn't. Root-caused against
+		# elogind's own real source (github.com/elogind/elogind): the three
+		# power actions talk straight to elogind's Manager object, no
+		# session/cgroup involved; Terminate (what loginctl terminate-session
+		# maps to) calls session_stop() -> session_stop_scope(), which does
+		# `session_kill(s, KILL_ALL, SIGTERM, ...)` against the session's OWN
+		# cgroup (confirmed in logind-session.c) -- silently a no-op if that
+		# cgroup was never correctly associated via pam_elogind in the first
+		# place, which a brand-new dinit + getty-autologin + sway stack (no
+		# systemd-logind heritage the way Void's own setup has) is exactly
+		# the kind of thing that can still be wrong on.
+		#
+		# Also try swaymsg exit -- already this project's own real, WM-native
+		# mechanism for ending a sway session (see the sway config's own
+		# $mod+Shift+e emergency-exit binding), independent of elogind/
+		# cgroups entirely. Only fires under sway (SWAYSOCK unset, and the
+		# binary simply missing, elsewhere) so this stays a no-op on any
+		# future non-sway variant -- h77-dots itself is WM-agnostic.
 		loginctl terminate-session "${XDG_SESSION_ID:-}" 2>/dev/null || loginctl terminate-user "$USER"
+		[ -n "${SWAYSOCK:-}" ] && command -v swaymsg >/dev/null 2>&1 && swaymsg exit
 		;;
 	" Reboot")
 		reboot_confirm
