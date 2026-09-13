@@ -1,0 +1,76 @@
+#!/bin/sh
+# hybrid-d77 :: pull the latest h77-dots/h77-sway-dots/h77-installer/
+# h77-install-scripts build from this project's own GitHub Release
+# (h77-pkgs, built by .github/workflows/build-h77-pkgs.yml) and apk
+# upgrade against it. Same source of truth as iso/fetch-pkgs.sh (which
+# does the same thing for a fresh ISO build), but meant to run ON an
+# already-installed system instead of a dev machine -- so it talks to
+# GitHub's own REST API directly via curl+jq rather than needing the
+# `gh` CLI (a dev tool with no business being a requirement on an
+# end-user install).
+#
+# Real, important nuance, not obvious from the outside: this project's
+# own container/cbuild-entrypoint.sh runs `cbuild keygen`
+# UNCONDITIONALLY whenever etc/keys/*.rsa doesn't already exist -- and
+# since the cbuild container is fully ephemeral (a fresh clone of
+# cports every single run, no persisted state), that condition is true
+# on literally every build, local or CI. Every h77-pkgs release is
+# therefore signed with a DIFFERENT, freshly generated key from the
+# one before it -- the public key an ISO trusted at build time will
+# NOT verify a later release's packages. So this script always fetches
+# and trusts the CURRENT release's own *.rsa.pub fresh, rather than
+# relying on whatever key the running system already has in
+# /etc/apk/keys/. (A more traditional setup would persist one signing
+# key across builds via a CI secret instead -- not done here; this is
+# the pragmatic fix for the architecture as it stands.)
+set -eu
+
+REPO="${HYBRID_D77_REPO:-dani-77/hybrid-d77}"
+TAG="${1:-h77-pkgs}"
+PKGS="h77-dots h77-sway-dots h77-installer h77-install-scripts"
+
+[ "$(id -u)" -eq 0 ] || { echo "run as root (doas h77-update)" >&2; exit 1; }
+command -v curl > /dev/null || { echo "!! curl is required" >&2; exit 1; }
+command -v jq > /dev/null || { echo "!! jq is required" >&2; exit 1; }
+
+api="https://api.github.com/repos/${REPO}/releases/tags/${TAG}"
+echo ">> checking $api"
+json=$(curl -fsSL "$api") || {
+	echo "!! failed to reach GitHub (no internet, or no such release?)" >&2
+	exit 1
+}
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+echo ">> downloading release assets..."
+echo "$json" | jq -r '.assets[] | "\(.name) \(.browser_download_url)"' \
+	| while read -r name url; do
+		curl -fsSL -o "$tmp/$name" "$url"
+	done
+
+[ -f "$tmp/SHA256SUMS" ] || {
+	echo "!! release is missing SHA256SUMS -- refusing to install unverified packages" >&2
+	exit 1
+}
+( cd "$tmp" && sha256sum -c SHA256SUMS )
+
+pubkey=$(find "$tmp" -maxdepth 1 -name '*.rsa.pub' | head -1)
+[ -n "$pubkey" ] || { echo "!! no *.rsa.pub in the release" >&2; exit 1; }
+
+# Same local-repo layout iso/mklive-d77.sh's own LOCAL_REPO already
+# uses ($project/cbuild-out/hybrid/x86_64/...) -- apk itself expects
+# <repository-root>/<arch>/{APKINDEX.tar.gz,*.apk}.
+repodir=/var/cache/h77-update/hybrid
+rm -rf "$repodir"
+mkdir -p "$repodir/x86_64"
+mv "$tmp"/*.apk "$tmp"/APKINDEX.tar.gz "$repodir/x86_64/"
+
+mkdir -p /etc/apk/keys
+cp -f "$pubkey" "/etc/apk/keys/$(basename "$pubkey")"
+
+echo ">> apk upgrade against the fetched repo..."
+# shellcheck disable=SC2086
+apk upgrade --repository "file://$repodir" $PKGS
+
+echo ">> done"

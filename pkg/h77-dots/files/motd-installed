@@ -1,1 +1,4 @@
 Welcome to hybrid-d77 (Chimera Linux + Sway).
+
+  Base system updates: apk upgrade
+  hybrid-d77's own packages: doas h77-update

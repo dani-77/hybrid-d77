@@ -96,6 +96,27 @@
 # itself (h77-installer's own pre-flight dialog already covers this) --
 # user's own call: "isso é feito sozinho e bem feito," no need to
 # pre-explain it in the motd too.
+#
+# 2026-09-13, later: files/h77-update (new) -- pulls the latest h77-*
+# packages from this project's own GitHub Release (h77-pkgs) and apk
+# upgrades against them on an ALREADY-INSTALLED system, mirroring
+# iso/fetch-pkgs.sh's own real, working pattern but talking to
+# GitHub's REST API directly via curl+jq instead of needing the `gh`
+# CLI (a dev tool, not something to require on an end-user install).
+# Real nuance the script's own header explains in full: cbuild's own
+# signing key is regenerated on every single build (confirmed in
+# container/cbuild-entrypoint.sh -- keygen runs unconditionally
+# whenever etc/keys/*.rsa doesn't exist, and the cbuild container
+# reclones cports from scratch every run, so that's always true) --
+# so the key an ISO trusted at build time won't verify a LATER
+# release's packages. Fixed by always fetching and trusting each
+# release's own *.rsa.pub fresh at update time, same as how
+# iso/mklive-d77.sh already does for a fresh ISO build. jq (`main`
+# tier, confirmed real) added to mklive-image.sh's sway PKGS for this;
+# curl was already there (wittr.sh). Also mentioned in
+# files/motd-installed ("doas h77-update"), not the live motd -- makes
+# no sense to update an ephemeral live session. User's own request,
+# 2026-09-13.
 
 pkgname = "h77-dots"
 pkgver = "0.1.0"
@@ -163,6 +184,16 @@ def install(self):
     # standard Linux convention (not sway/labwc-specific).
     self.install_file(self.files_path / "environment", "etc")
     self.install_bin(self.files_path / "fuzzel-power-menu")
+    # h77-update: pulls the latest h77-* packages from this project's
+    # own GitHub Release (h77-pkgs) and apk upgrades against them on an
+    # ALREADY-INSTALLED system -- see the script's own header comment
+    # for the full reasoning, including why it always trusts that
+    # release's own signing key fresh rather than one baked in at ISO
+    # build time (cbuild's own key is regenerated every single build,
+    # confirmed in container/cbuild-entrypoint.sh). Needs curl (already
+    # here for wittr.sh) + jq (added to mklive-image.sh's sway PKGS
+    # for this). User's own request, 2026-09-13.
+    self.install_bin(self.files_path / "h77-update")
 
     # files/storage.sysusers: "g storage -" (systemd-sysusers syntax,
     # confirmed against a real cports package's own sysusers.conf,

@@ -84,7 +84,7 @@ case "$IMAGE" in
 swaync wmenu cliphist wlsunset xwayland-satellite \
 foot brightnessctl grim slurp wl-clipboard \
 fuzzel fonts-hack-ttf fonts-nerd-hack fonts-font-awesome-otf bash \
-playerctl python-gobject curl wget2 firefox thunderbird \
+playerctl python-gobject curl wget2 jq firefox thunderbird \
 elogind libseat-seatd libseat-seatd-dinit mate-polkit \
 dbus dbus-dinit polkit polkit-dinit \
 networkmanager networkmanager-dinit power-profiles-daemon \
@@ -162,6 +162,11 @@ h77-dots h77-sway-dots h77-installer h77-install-scripts"
         # bugs found while double-checking gtk-2.0/3.0/4.0 -- see
         # pkg/h77-dots/template.py's own header comment for the
         # Kvantum "KvArcDark" and gtk-cursor-theme-name fixes.
+        #
+        # 2026-09-13, later: jq (`main` tier, confirmed real) added
+        # for h77-dots' new h77-update script -- reliable JSON parsing
+        # of the GitHub Releases API without depending on the `gh` CLI
+        # (a dev tool, not something an end-user install should need).
         ;;
     *)
         echo "unknown image type: $IMAGE"
