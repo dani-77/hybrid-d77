@@ -19,21 +19,23 @@
 #
 # 2026-09-13: chimera-installer's own custom Partition/Filesystems
 # steps (menu_hybrid_partition/menu_hybrid_filesystems) were reverted
-# after real hardware testing (see h77-install-scripts' own
-# template.py) -- partitioning/formatting/mounting is manual again,
-# plain upstream convention. User's own suggestion: put a clear
-# reminder right before the installer itself launches, not just in
-# motd (easy to have scrolled past by the time someone actually runs
-# this), so it's the last thing seen before SystemRoot asks for a
-# path. `dialog` is already a hard package dependency of this image
+# after real hardware testing, then rewritten the same day to actually
+# mirror void-installer's own real architecture (planning is
+# interactive, execution is one non-interactive pass -- see
+# h77-install-scripts' own template.py for the full history) and
+# restored. Partitioning/formatting/mounting is interactive again, via
+# the installer's own Partition and Filesystems steps -- no manual
+# pre-partitioning needed. Target path is a fixed /mnt (user's own
+# real, proven manual convention, not upstream menu_sysroot's own
+# "/mnt/root" default text), set automatically once Filesystems is
+# applied. `dialog` is already a hard package dependency of this image
 # (see mklive-image.sh's sway PKGS).
 dialog --colors --no-shadow --backtitle "Hybrid D77 installer" \
     --title "Before you start" --msgbox \
-    "Partition and format the target disk by hand first (cfdisk/fdisk + mkfs), \
-then mount it all under /mnt/root -- the root filesystem AT /mnt/root \
-itself, anything else (e.g. an EFI system partition) under \
-/mnt/root/<path>. UEFI needs a FAT32 ESP; BIOS/MBR needs none. \
-SystemRoot, later in this installer, expects exactly /mnt/root." \
+    "Partition (cfdisk) and Filesystems (format/mount planning) are both \
+steps in this installer -- no need to do that by hand first. On a UEFI \
+machine you'll need a FAT32 ESP among the partitions; on BIOS/MBR none \
+is needed. The target is mounted at /mnt." \
     12 74
 
 # 2026-09-13, same day: real hardware report -- the Groups/Services

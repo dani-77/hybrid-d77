@@ -954,6 +954,253 @@ menu_hybrid_keymap() {
     fi
 }
 
+# Partition: pure delegation to cfdisk, same as void-installer's own
+# menu_partitions (it offers a choice of cfdisk/fdisk and just execs
+# whichever was picked on the chosen disk -- no custom partition-table
+# code there either). cfdisk comes from util-linux-fdisk (`main`,
+# confirmed against its real template.py: subpackage util-linux-fdisk,
+# files "usr/bin/*fdisk" -- covers fdisk/cfdisk/sfdisk together).
+# Deliberately does NOT try to also format or mount afterward -- that
+# stays a separate step (menu_hybrid_filesystems below), exactly like
+# void-installer's own separation between menu_partitions (raw
+# partitioning) and menu_filesystems (format/mount planning).
+menu_hybrid_partition() {
+    local _hd77_disk _hd77_list
+    _hd77_list=""
+    for _hd77_disk in $(lsblk -dlno NAME,TYPE 2> /dev/null | awk '$2 == "disk" {print $1}'); do
+        _hd77_list="$_hd77_list /dev/$_hd77_disk /dev/$_hd77_disk"
+    done
+    if [ -z "$_hd77_list" ]; then
+        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} no disks found" 8 60
+        return 1
+    fi
+    ui_dialog --no-tags --menu "Select the disk to partition:" 20 60 14 $_hd77_list
+    if [ $? -eq 0 ]; then
+        clear
+        cfdisk "$(cat "$ANSWER_FILE")"
+    fi
+}
+
+# Filesystems, rewritten 2026-09-13 to actually mirror void-installer's
+# own real architecture instead of approximating it, after the first
+# attempt (format+mount immediately, interactively, per partition)
+# failed on real hardware for a reason that was never fully proven
+# (see h77-install-scripts' own template.py for the full history) and
+# was reverted. Re-read void-installer's real source side by side with
+# ours this time (github.com/void-linux/void-mklive, installer.sh):
+#
+#   - void's menu_filesystems does ZERO disk I/O. It only RECORDS the
+#     plan (device, fstype, size, mountpoint, reformat-or-not) into a
+#     config file -- a pure planning step, run interactively from the
+#     menu, same as ours below.
+#   - The actual mkfs/mount only happens in a SEPARATE function,
+#     create_filesystems, called much later, non-interactively, as one
+#     atomic pass -- it just replays the already-recorded plan, no
+#     dialogs at all. void calls it immediately before the real
+#     install begins, so there's no gap between formatting/mounting
+#     and actually using that mount.
+#   - void's TARGETDIR is a fixed constant (/mnt/target) with no
+#     equivalent of chimera's own separate, validated SystemRoot step
+#     (menu_sysroot, pure unmodified upstream here, requires
+#     `mountpoint -q` to already be true when selected) -- so void
+#     never needs an early, still-mid-menu-navigation mount the way
+#     our first attempt did.
+#
+# This rewrite keeps that same planning/execution split void uses:
+# the loop below ONLY records into HD77_FS_FILE (plus a real-time
+# "Recorded: ..." confirmation reading back from the file itself, kept
+# from the diagnostic pass added before the revert -- cheap insurance,
+# and it's exactly the kind of proof void's own single silent
+# create_filesystems pass doesn't give you if something's ever wrong).
+# Once "Done" is picked, ONE consolidated confirmation shows the whole
+# plan at once (replacing the earlier per-partition yes/no, closer to
+# void's own single "are you sure" framing) and then mkfs/mount runs
+# as one non-interactive pass, mirroring create_filesystems exactly --
+# no more dialogs asked mid-execution. SYSROOT is still set to a fixed
+# path at the end (this project's own equivalent of void's TARGETDIR --
+# /mnt itself, matching the user's own proven manual convention rather
+# than upstream menu_sysroot's own "/mnt/root" default text, see that
+# assignment's own comment below), which is why SystemRoot's own
+# upstream `mountpoint -q` check passes afterward without needing to
+# be touched.
+HD77_FS_FILE="/tmp/.hd77-filesystems.conf"
+: > "$HD77_FS_FILE"
+
+menu_hybrid_filesystems() {
+    local _hd77_part _hd77_list _hd77_size _hd77_fstype _hd77_mnt _hd77_fmt _hd77_root
+    local _hd77_summary _hd77_line
+
+    while :; do
+        _hd77_list=""
+        for _hd77_part in $(lsblk -plno NAME,TYPE 2> /dev/null | awk '$2 == "part" {print $1}'); do
+            _hd77_size=$(lsblk -no SIZE "$_hd77_part" 2> /dev/null)
+            _hd77_list="$_hd77_list $_hd77_part ${_hd77_size:-?}"
+        done
+        _hd77_list="$_hd77_list Done Finish-planning-and-apply"
+        ui_dialog --menu \
+            "Select a partition to configure (or Done to apply the plan and continue):" \
+            20 60 14 $_hd77_list
+        [ $? -eq 0 ] || return 1
+        _hd77_part="$(cat "$ANSWER_FILE")"
+        [ "$_hd77_part" = "Done" ] && break
+
+        ui_dialog --no-tags --menu "Filesystem type for $_hd77_part:" 20 60 8 \
+            "ext4" "Linux ext4 (journal)" \
+            "ext3" "Linux ext3 (journal)" \
+            "ext2" "Linux ext2 (no journaling)" \
+            "btrfs" "Oracle's Btrfs" \
+            "xfs" "SGI's XFS" \
+            "f2fs" "Flash-Friendly Filesystem" \
+            "vfat" "FAT32 (for the ESP, if using systemd-boot)" \
+            "swap" "Linux swap"
+        [ $? -eq 0 ] || continue
+        _hd77_fstype="$(cat "$ANSWER_FILE")"
+
+        if [ "$_hd77_fstype" = "swap" ]; then
+            _hd77_mnt="swap"
+        else
+            ui_dialog --inputbox \
+                "Mount point in the INSTALLED system for $_hd77_part -- this is a target-layout path, e.g. / or /home or /boot, NOT the installer's own internal staging path (use / for the root filesystem):" \
+                10 70 "/"
+            if [ $? -ne 0 ]; then
+                ui_dialog --msgbox "Cancelled -- $_hd77_part was NOT recorded, back to the partition list." 8 70
+                continue
+            fi
+            _hd77_mnt="$(cat "$ANSWER_FILE")"
+            if [ -z "$_hd77_mnt" ]; then
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} empty mount point -- $_hd77_part was NOT recorded, back to the partition list." 8 70
+                continue
+            fi
+        fi
+
+        ui_dialog --yesno \
+            "Create a new $_hd77_fstype filesystem on $_hd77_part?\n\nAnswer No to reuse whatever is already there (e.g. an existing /home). Nothing is written to disk yet either way -- this is only recorded into the plan for now." \
+            12 70
+        case $? in
+            0) _hd77_fmt=1 ;;
+            1) _hd77_fmt=0 ;;
+            *)
+                ui_dialog --msgbox "Cancelled -- $_hd77_part was NOT recorded, back to the partition list." 8 70
+                continue
+                ;;
+        esac
+
+        grep -v "^MOUNTPOINT $_hd77_part " "$HD77_FS_FILE" > "$HD77_FS_FILE.new" 2> /dev/null
+        mv -f "$HD77_FS_FILE.new" "$HD77_FS_FILE"
+        echo "MOUNTPOINT $_hd77_part $_hd77_fstype $_hd77_mnt $_hd77_fmt" >> "$HD77_FS_FILE"
+        # Diagnostic confirmation, reading back from the FILE itself
+        # (not the in-memory variables) so it reflects reality even if
+        # some earlier step behaved unexpectedly -- kept from the
+        # pre-revert diagnostic pass, see this function's own header.
+        ui_dialog --msgbox "Recorded:\n\n$(grep "^MOUNTPOINT $_hd77_part " "$HD77_FS_FILE")" 10 70
+    done
+
+    grep -q '^MOUNTPOINT .* / [01]$' "$HD77_FS_FILE" || {
+        ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} no partition was assigned to / -- nothing to apply.\n\nRecorded so far (raw HD77_FS_FILE, empty means nothing was ever saved):\n\n$(cat "$HD77_FS_FILE" 2> /dev/null)" 16 76
+        return 1
+    }
+
+    # Single consolidated confirmation for the WHOLE plan, void-style
+    # (its own menu_filesystems asks per-partition too, same as ours
+    # above, but everything below this point mirrors create_filesystems:
+    # one non-interactive pass, no more dialogs until it's done).
+    _hd77_summary=""
+    while read -r _hd77_line; do
+        _hd77_summary="$_hd77_summary$_hd77_line
+"
+    done < "$HD77_FS_FILE"
+    ui_dialog --yesno \
+        "${DLG_BOLD}${DLG_RED}WARNING:${DLG_RESET} apply this plan now?\n\n$_hd77_summary\nEntries with a trailing 1 WILL BE FORMATTED, ERASING ALL EXISTING DATA. Entries with a trailing 0 are mounted as-is." \
+        18 74
+    [ $? -eq 0 ] || return 1
+
+    # /mnt itself (not a subdirectory like upstream menu_sysroot's own
+    # "/mnt/root" default text below) -- user's own real, proven manual
+    # workflow always mounts directly at /mnt and works from there
+    # (e.g. stripping the "/mnt" prefix by hand when checking fstab).
+    # genfstab's own real source (checked, not assumed) strips whatever
+    # ROOT_PATH actually is via a generic ${target#$ROOT_PATH}, no
+    # hardcoded "/mnt" anywhere -- so either path works identically as
+    # far as this project's own tooling goes; matching the user's own
+    # convention removes any doubt rather than leaving it untested.
+    _hd77_root="/mnt"
+    mkdir -p "$_hd77_root"
+
+    # Sorted by mountpoint (field 4) into a real temp file, not a
+    # process substitution -- <(...) is a bashism, and this script's
+    # own shebang is #!/bin/sh, which on Chimera is chimerautils' own
+    # minimal sh (dash-like, confirmed elsewhere this project), not
+    # bash. Confirmed the hard way: "Syntax error: redirection
+    # unexpected" from `sh -n` on a first draft that used <(...).
+    sort -k4 "$HD77_FS_FILE" > "$HD77_FS_FILE.sorted"
+
+    # swap first (order doesn't matter for it), root next, then
+    # everything else sorted by mountpoint depth so parents exist
+    # before children (e.g. / before /boot/efi). No dialogs from here
+    # on -- purely informational progress, matching void's own
+    # create_filesystems (INFOBOX only, no interaction).
+    while read -r _ _hd77_part _hd77_fstype _hd77_mnt _hd77_fmt; do
+        [ "$_hd77_fstype" = "swap" ] || continue
+        [ "$_hd77_fmt" = "1" ] && {
+            ui_infobox "" "Creating swap on $_hd77_part..." 4 60
+            # void-installer's own create_filesystems does this too --
+            # defensive, in case this partition (or a previous one at
+            # the same offset) was already active swap.
+            swapoff "$_hd77_part" > /dev/null 2>&1
+            mkswap "$_hd77_part" > /dev/null 2>&1 || {
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} mkswap failed on $_hd77_part" 8 70
+                return 1
+            }
+        }
+        swapon "$_hd77_part" > /dev/null 2>&1
+    done < "$HD77_FS_FILE"
+
+    while read -r _ _hd77_part _hd77_fstype _hd77_mnt _hd77_fmt; do
+        [ "$_hd77_fstype" = "swap" ] && continue
+        if [ "$_hd77_fmt" = "1" ]; then
+            ui_infobox "" "Creating $_hd77_fstype on $_hd77_part..." 4 60
+            # void-installer's own create_filesystems modprobes the fs
+            # driver before each mkfs too -- defensive, in case it's
+            # not already loaded/built in.
+            modprobe "$_hd77_fstype" > /dev/null 2>&1
+            case "$_hd77_fstype" in
+                ext2) mke2fs -F "$_hd77_part" ;;
+                ext3) mke2fs -F -j "$_hd77_part" ;;
+                ext4) mke2fs -F -t ext4 "$_hd77_part" ;;
+                btrfs) mkfs.btrfs -f "$_hd77_part" ;;
+                xfs) mkfs.xfs -f "$_hd77_part" ;;
+                f2fs) mkfs.f2fs -f "$_hd77_part" ;;
+                vfat) mkfs.vfat -F32 "$_hd77_part" ;;
+            esac > /dev/null 2>&1
+            if [ $? -ne 0 ]; then
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to create $_hd77_fstype on $_hd77_part" 8 70
+                return 1
+            fi
+        fi
+        if [ "$_hd77_mnt" = "/" ]; then
+            ui_infobox "" "Mounting $_hd77_part on $_hd77_root..." 4 60
+            mount -t "$_hd77_fstype" "$_hd77_part" "$_hd77_root" || {
+                ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to mount $_hd77_part" 8 70
+                return 1
+            }
+        fi
+    done < "$HD77_FS_FILE.sorted"
+
+    while read -r _ _hd77_part _hd77_fstype _hd77_mnt _hd77_fmt; do
+        [ "$_hd77_fstype" = "swap" ] && continue
+        [ "$_hd77_mnt" = "/" ] && continue
+        ui_infobox "" "Mounting $_hd77_part on ${_hd77_root}${_hd77_mnt}..." 4 60
+        mkdir -p "${_hd77_root}${_hd77_mnt}"
+        mount -t "$_hd77_fstype" "$_hd77_part" "${_hd77_root}${_hd77_mnt}" || {
+            ui_dialog --msgbox "${DLG_BOLD}${DLG_RED}ERROR:${DLG_RESET} failed to mount $_hd77_part" 8 70
+            return 1
+        }
+    done < "$HD77_FS_FILE.sorted"
+
+    config_set SYSROOT "$_hd77_root"
+    ui_dialog --msgbox "Formatted/mounted successfully at $_hd77_root.\n\nContinuing to SystemRoot, which is now pre-filled with this path." 8 70
+}
+
 # hybrid-d77 patch: upstream chimera-installer has NO services step at
 # all (confirmed against its own real source) -- unlike Void's own
 # void-installer, which offers one via a real checklist against
@@ -1421,6 +1668,8 @@ menu_entry() {
         "Keymap" "Console keymap" \
         "RootPassword" "Root password" \
         "UserAccount" "Your user name and password (admin account)" \
+        "Partition" "Partition a disk (opens cfdisk)" \
+        "Filesystems" "Plan filesystems and mountpoints for the install" \
         "SystemRoot" "Set the target path for bootstrap" \
         "Kernel" "Select the kernel to use" \
         "Packages" "Specify extra packages to install" \
@@ -1443,7 +1692,9 @@ menu_entry() {
         "Timezone") menu_timezone && config_has TIMEZONE && MENU_DEFAULT_ITEM="Keymap" ;;
         "Keymap") menu_hybrid_keymap && config_has KEYMAP && MENU_DEFAULT_ITEM="RootPassword" ;;
         "RootPassword") menu_password root ROOT_PASSWORD && config_has ROOT_PASSWORD && MENU_DEFAULT_ITEM="UserAccount" ;;
-        "UserAccount") menu_user_account && config_has USERNAME && MENU_DEFAULT_ITEM="SystemRoot" ;;
+        "UserAccount") menu_user_account && config_has USERNAME && MENU_DEFAULT_ITEM="Partition" ;;
+        "Partition") menu_hybrid_partition && MENU_DEFAULT_ITEM="Filesystems" ;;
+        "Filesystems") menu_hybrid_filesystems && config_has SYSROOT && MENU_DEFAULT_ITEM="SystemRoot" ;;
         "SystemRoot") menu_sysroot && config_has SYSROOT && MENU_DEFAULT_ITEM="Kernel" ;;
         "Kernel") menu_kernel && config_has KERNEL && MENU_DEFAULT_ITEM="Packages" ;;
         "Packages") menu_packages && config_has PACKAGES_HAVE && MENU_DEFAULT_ITEM="Bootloader" ;;

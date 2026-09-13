@@ -165,6 +165,43 @@
 # falls back to just deleting the live motd if that file isn't there
 # for any reason.
 #
+# Same day, later: Partition and Filesystems RESTORED, rewritten to
+# actually mirror void-installer's own real architecture this time
+# instead of approximating it. Re-read void's real source side by
+# side with ours (github.com/void-linux/void-mklive, installer.sh):
+# its own menu_filesystems does ZERO disk I/O -- only records the plan
+# into a config file, pure planning; the actual mkfs/mount only
+# happens in a separate function, create_filesystems, called once,
+# non-interactively, immediately before the real install begins (no
+# gap between formatting/mounting and using that mount). void's
+# TARGETDIR is also a fixed constant (/mnt/target) with no equivalent
+# of chimera's own separate, validated SystemRoot step.
+#
+# menu_hybrid_filesystems now keeps that same split: the interactive
+# loop only records into HD77_FS_FILE (plus a "Recorded: ..."
+# diagnostic confirmation per entry, and a raw-file dump on the final
+# validation error -- kept from the diagnostic pass added right before
+# the original revert, since real proof beats guessing if this ever
+# breaks again). Once "Done" is picked, ONE consolidated confirmation
+# shows the whole plan (replacing the earlier per-partition yes/no,
+# closer to void's own single "are you sure" framing), then mkfs/mount
+# runs as one non-interactive pass mirroring create_filesystems
+# exactly -- no more dialogs mid-execution.
+#
+# Target path changed from /mnt/root to plain /mnt -- user's own real,
+# proven manual install convention (mount root directly at /mnt,
+# strip that prefix by hand when needed), raised as a concern before
+# implementing this. Checked genfstab's own real source first: it
+# strips whatever ROOT_PATH actually is via a generic
+# `${target#$ROOT_PATH}`, no "/mnt" hardcoded anywhere, so either path
+# works identically as far as this project's tooling goes -- matching
+# the user's own convention removes any doubt rather than leaving it
+# untested. Upstream menu_sysroot's own "/mnt/root" fallback default
+# text is untouched (real upstream default, confirmed against the
+# pristine source at the pinned commit) -- it only matters if SYSROOT
+# was never set, i.e. Partition/Filesystems were skipped entirely and
+# SystemRoot is being filled in by hand instead.
+#
 # Source: github.com/chimera-linux/chimera-install-scripts, commit
 # 43b0a7d2c86fa51c85a3fdc532ac5ebf9ece83b1 (the exact commit
 # chimera-install-scripts-0.6.1 in cports itself builds from --
