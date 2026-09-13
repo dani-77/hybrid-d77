@@ -72,7 +72,9 @@ pkg/h77-dots/                  general app dotfiles (/etc/skel): foot,
                                fuzzel + fuzzel-power-menu, the wallpaper,
                                50-udisks.rules, motd (+ a separate,
                                credential-free motd-installed the installer
-                               swaps in after a real disk install)
+                               swaps in after a real disk install),
+                               h77-update (updates h77-* on an installed
+                               system from the h77-pkgs GitHub Release)
 pkg/h77-sway-dots/             sway/swaylock/swaync/waybar dotfiles
                                (/etc/skel), depends = ["h77-dots"]
 pkg/h77-installer/             thin wrapper around h77-install-scripts' own
