@@ -74,9 +74,16 @@ jobs:
 
       - name: Checksum
         run: |
+          # Release assets are uploaded flat (gh release upload/download
+          # don't preserve any directory structure -- confirmed the hard
+          # way, iso/fetch-pkgs.sh's `sha256sum -c` failed looking for
+          # "hybrid/x86_64/h77-dots-....apk" inside its own flat tmp
+          # download dir). SHA256SUMS must record plain basenames to
+          # match, so cd into each real source dir instead of globbing
+          # with the directory prefix baked into the recorded path.
           cd cbuild-out
-          sha256sum *.pub hybrid/x86_64/*.apk hybrid/x86_64/APKINDEX.tar.gz \
-            > SHA256SUMS
+          (cd hybrid/x86_64 && sha256sum *.apk APKINDEX.tar.gz) > SHA256SUMS
+          sha256sum *.pub >> SHA256SUMS
 
       - name: Publish release
         env:
