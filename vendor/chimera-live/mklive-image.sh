@@ -98,7 +98,7 @@ acpi bash-completion bc-gh cmus cups system-config-printer \
 fastfetch feh gettext htop inxi imagemagick mousepad mpv \
 musl-locales nano smartmontools transmission ufw unzip usbutils \
 neovim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
-git clang gmake \
+git clang gmake tree-sitter-cli \
 chimera-repo-user \
 dialog \
 h77-dots h77-sway-dots h77-installer h77-install-scripts"
@@ -184,6 +184,19 @@ h77-dots h77-sway-dots h77-installer h77-install-scripts"
         # installs only `usr/bin/bmake` and provides no generic `make`
         # at all -- needed for plugins with a native build step, e.g.
         # telescope-fzf-native.nvim.
+        #
+        # 2026-09-16, same day, real gap found on a real install:
+        # tree-sitter-cli (`user` tier) -- the shipped nvim-treesitter
+        # is on its "main" branch (the v1.0 rewrite, see lazy-lock.json),
+        # which no longer compiles parsers by invoking cc/clang
+        # directly -- it shells out to the `tree-sitter` CLI's own
+        # `tree-sitter build` instead, which THEN invokes the C
+        # compiler. Without this package, every parser install failed
+        # with "Error during \"tree-sitter build\": ... ENOENT" even
+        # with clang+gmake both present and working. Confirmed by
+        # reproducing headless, then fixed and re-verified the same
+        # way (TSInstall no longer errors, .so files land in
+        # nvim-treesitter/parser/).
         ;;
     *)
         echo "unknown image type: $IMAGE"
