@@ -118,6 +118,35 @@
 # files/motd-installed ("doas h77-update"), not the live motd -- makes
 # no sense to update an ephemeral live session. User's own request,
 # 2026-09-13.
+#
+# 2026-09-16: skel/.config/nvim (new) -- the LazyVim starter
+# (github.com/LazyVim/starter), copied from a real installed system
+# as-is, no local customization yet (lua/plugins/ only has the
+# starter's own example.lua). Needs `neovim` (already in
+# mklive-image.sh's sway PKGS, `user` tier) plus `git`, `clang`,
+# `gmake` (added same day) to actually be usable -- lazy.nvim clones
+# every plugin via git, and native-build plugins (treesitter parsers,
+# telescope-fzf-native) need a C compiler + `make`.
+#
+# 2026-09-16, also: skel/.config/mimeapps.list -- a real, silent gap,
+# same story as h77-sway-dots' own swaync miss: mimeapps.list was
+# already named above as one of the files sourced from
+# ~/d77void/common/config/ on 2026-09-12, but never actually got
+# copied into skel/. Added now, but trimmed to just the one entry that
+# is a genuine project default (text/plain -> mousepad, matching
+# h77-dots' own mousepad package) -- the real file on the source
+# machine also had `x-scheme-handler/claude-cli=claude-code-url-
+# handler.desktop`, a per-machine artifact of that one install's own
+# Claude Code setup, not something every fresh install should get.
+#
+# 2026-09-16, fastfetch: config.jsonc and its logo re-synced from a
+# real installed system -- the committed version was still the
+# inherited "D77 Void" branding (kitty-protocol logo at
+# images/original.png); the real machine had already moved on to
+# "Hybrid D77" branding, a sixel-protocol logo (skel/.config/fastfetch/
+# logo.png, replacing the old images/original.png entirely, now
+# removed as dead weight), and the D77 Void icon glyph swapped for a
+# "chi" character in the module icons (Chimera-appropriate).
 
 pkgname = "h77-dots"
 pkgver = "0.1.0"

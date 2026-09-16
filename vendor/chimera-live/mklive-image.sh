@@ -98,6 +98,7 @@ acpi bash-completion bc-gh cmus cups system-config-printer \
 fastfetch feh gettext htop inxi imagemagick mousepad mpv \
 musl-locales nano smartmontools transmission ufw unzip usbutils \
 neovim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
+git clang gmake \
 chimera-repo-user \
 dialog \
 h77-dots h77-sway-dots h77-installer h77-install-scripts"
@@ -167,6 +168,22 @@ h77-dots h77-sway-dots h77-installer h77-install-scripts"
         # for h77-dots' new h77-update script -- reliable JSON parsing
         # of the GitHub Releases API without depending on the `gh` CLI
         # (a dev tool, not something an end-user install should need).
+        #
+        # 2026-09-16: git, clang, gmake (all `main` tier, confirmed via
+        # `apk policy`) added after neovim/LazyVim came up short on a
+        # real installed system -- lazy.nvim (LazyVim's own plugin
+        # manager) shells out to `git` to clone every plugin, so neovim
+        # is non-functional without it regardless of anything else here.
+        # clang covers the "no C compiler" healthcheck warning (this
+        # variant intentionally has no `gcc` -- Chimera's own base is
+        # LLVM-only, so clang is the native choice, and nvim-treesitter
+        # accepts it from its own compiler list). gmake is the one that
+        # actually matters for the name `make`: confirmed via `apk
+        # manifest` that the `gmake` package installs the real binary
+        # at `usr/bin/make` (not just `usr/bin/gmake`), while `bmake`
+        # installs only `usr/bin/bmake` and provides no generic `make`
+        # at all -- needed for plugins with a native build step, e.g.
+        # telescope-fzf-native.nvim.
         ;;
     *)
         echo "unknown image type: $IMAGE"

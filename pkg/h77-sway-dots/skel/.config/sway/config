@@ -81,6 +81,9 @@ exec /usr/libexec/polkit-mate-authentication-agent-1 &
 ### Start SwayNotificationCenter
 exec swaync &
 
+### Brightness
+exec brightnessctl set 50% &
+
 ### XDG
 exec xdg-user-dirs-update &
 exec xdg-user-dirs-gtk-update &
