@@ -1252,3 +1252,38 @@ container/cbuild-entrypoint.sh's H77_PKGS (ordered before h77-sway-dots
 known to be resolved automatically by cbuild), h77-dots' own h77-update
 PKGS list (so an installed system's `doas h77-update` also pulls
 h77-welcome updates), and the CI release title.
+
+## 2026-09-24, later :: native-host build, real gap -- ISO never reached iso/
+
+Ran the native-host path for real, to test h77-welcome (this IS a
+Chimera/hybrid-d77 host): `./iso/fetch-pkgs.sh` then `doas
+./iso/mklive-d77.sh`. First attempt failed outright: "ERROR: build
+already exists" -- a leftover `vendor/chimera-live/build/` from the
+2026-09-16 session, owned by root (same issue build.sh's own comment
+already documents and works around with `rm -rf`/`sudo rm -rf`
+before every run -- iso/mklive-d77.sh itself has no such cleanup,
+since it's meant to run directly against a clean checkout). Fixed by
+`doas rm -rf vendor/chimera-live/build` once, by hand.
+
+Second attempt built the full image successfully (mkfs.erofs's own
+LZMA pass alone took ~37 CPU-minutes at ~390% -- the real long pole of
+the whole build) and logged "Successfully generated image
+(chimera-linux-x86_64-LIVE-20260924-sway.iso)" -- but `iso/*.iso`
+stayed empty. Root cause, found by actually looking: mklive.sh writes
+its .iso to CWD (vendor/chimera-live/, since mklive-d77.sh `cd`s there
+first), never into $REPO_ROOT/iso/ -- container/entrypoint.sh's own
+comment already documents this EXACT gap for the container path
+("mklive.sh writes the .iso to CWD ... NOT into the build dir ...
+confirmed the hard way") and covers it with an explicit `cp` -- but
+iso/mklive-d77.sh's own final command was `exec ./mklive-image.sh ...`,
+which replaces the whole process before any equivalent copy step could
+ever run. So the native-host path has apparently never actually copied
+its own output to iso/ -- confirmed the ISO sitting in
+vendor/chimera-live/ instead.
+
+Fixed: dropped the `exec` (now a plain call) and added the same
+mv-then-sha256sum step container/entrypoint.sh already does, at the
+end of iso/mklive-d77.sh itself. Recovered this run's own already-built
+ISO by hand (moved + checksummed), verified real with `sha256sum -c`,
+rather than re-running the ~40-minute build again just to test the
+fixed script path.

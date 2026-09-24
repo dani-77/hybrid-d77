@@ -51,9 +51,25 @@ cd "$SELF_DIR/../vendor/chimera-live"
 # real -r/-k/etc option has to precede `build` in THIS invocation too,
 # or it lands as a stray positional arg on mklive.sh's side instead of
 # being parsed.
-exec ./mklive-image.sh -b sway -- \
+#
+# NOT `exec`'d (unlike before 2026-09-24): mklive.sh writes its .iso to
+# CWD (here, vendor/chimera-live/), never into $REPO_ROOT/iso/ -- same
+# real gap container/entrypoint.sh's own comment already documents for
+# the container path ("mklive.sh writes the .iso to CWD ... confirmed
+# the hard way"). That path is covered by an explicit `cp` there; this
+# native-host script had no equivalent because `exec` here replaced
+# the whole process before any such step could run, so the ISO was
+# silently left behind in vendor/chimera-live/ instead of iso/ -- found
+# the same way, running it for real.
+./mklive-image.sh -b sway -- \
     -r https://repo.chimera-linux.org/current/main \
     -r https://repo.chimera-linux.org/current/user \
     -r "$LOCAL_REPO" \
     -k "$KEYDIR" \
     build "$@"
+
+echo ">> moving the ISO to $REPO_ROOT/iso/"
+mkdir -p "$REPO_ROOT/iso"
+mv ./*.iso "$REPO_ROOT/iso/"
+( cd "$REPO_ROOT/iso" && for f in *.iso; do sha256sum "$f" > "$f.sha256"; done )
+ls -lh "$REPO_ROOT"/iso/*.iso
