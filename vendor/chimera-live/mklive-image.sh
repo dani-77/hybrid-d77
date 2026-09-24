@@ -101,7 +101,7 @@ neovim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
 git clang gmake tree-sitter-cli \
 chimera-repo-user \
 dialog \
-h77-dots h77-sway-dots h77-installer h77-install-scripts"
+h77-dots h77-sway-dots h77-installer h77-install-scripts h77-welcome"
         # waybar (`user` tier -- real, confirmed 2026-09-12, corrects
         # this project's own earlier "doesn't exist" mistake) replaces
         # yambar: real bugs found on real hardware (hardcoded BAT0,
@@ -197,6 +197,14 @@ h77-dots h77-sway-dots h77-installer h77-install-scripts"
         # reproducing headless, then fixed and re-verified the same
         # way (TSInstall no longer errors, .so files land in
         # nvim-treesitter/parser/).
+        #
+        # 2026-09-24: h77-welcome (new) -- a dialog(1) TUI welcome/
+        # installer helper, this project's own equivalent of d77void's
+        # GTK d77-welcome. No new packages needed for it: `dialog` is
+        # already above (h77-installer's own "Before you start"
+        # notice), and it only shells out to h77-installer/h77-update,
+        # both already here too. See pkg/h77-welcome/template.py for
+        # the full reasoning.
         ;;
     *)
         echo "unknown image type: $IMAGE"

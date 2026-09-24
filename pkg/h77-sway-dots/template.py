@@ -30,6 +30,18 @@
 # sway/config's own `bar { }` block (swaybar + status.sh) is replaced
 # with a plain `exec waybar` -- see that file's own comment. status.sh
 # is kept only as a historical reference.
+#
+# 2026-09-24: skel/README.md (new) -- shown by h77-welcome's "About"
+# item, same role as every d77void variant's own skel/README.md
+# (credentials + keybinds), kept HERE rather than in h77-welcome itself
+# since its content (the keybind list) is sway-specific, not generic.
+# sway/config also gained the `exec` line that autostarts h77-welcome
+# and the app_id="h77-welcome" floating rule -- see that file's own
+# comment for the opt-out flag mechanism. h77-welcome added to depends=
+# for the binary this autostart line and README both rely on -- same
+# in-category dependency pattern as h77-dots above (cbuild resolves
+# depends= fine within our own "hybrid" category; only cross-category
+# `main`/`user` deps hit the resolution limitation noted there).
 
 pkgname = "h77-sway-dots"
 pkgver = "0.1.0"
@@ -38,7 +50,7 @@ build_style = "meta"
 pkgdesc = "Sway session dotfiles for hybrid-d77"
 license = "custom:meta"
 url = "https://github.com/dani-77/hybrid-d77"
-depends = ["h77-dots"]
+depends = ["h77-dots", "h77-welcome"]
 # Same reasoning as h77-dots: we genuinely install straight into
 # /etc/skel, cbuild's lint needs that acknowledged explicitly.
 options = ["etcfiles"]

@@ -27,7 +27,7 @@ set -eu
 
 REPO="${HYBRID_D77_REPO:-dani-77/hybrid-d77}"
 TAG="${1:-h77-pkgs}"
-PKGS="h77-dots h77-sway-dots h77-installer h77-install-scripts"
+PKGS="h77-dots h77-sway-dots h77-installer h77-install-scripts h77-welcome"
 
 [ "$(id -u)" -eq 0 ] || { echo "run as root (doas h77-update)" >&2; exit 1; }
 command -v curl > /dev/null || { echo "!! curl is required" >&2; exit 1; }

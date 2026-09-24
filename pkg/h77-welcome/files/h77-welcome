@@ -1,0 +1,95 @@
+#!/bin/sh
+# hybrid-d77 :: post-install/live welcome helper. Same role as
+# d77void's own d77-welcome (a GTK app), reimplemented here as a
+# dialog(1) TUI instead: this project already has no greeter (plain
+# getty login, see h77-sway-dots' .profile) and already depends on
+# `dialog` for h77-installer's own "Before you start" notice
+# (vendor/chimera-live/mklive-image.sh's sway PKGS), so pulling in a
+# second GUI toolkit (gtk+3/python3-gobject) just for this would be
+# real, avoidable weight -- python-gobject IS already in that same
+# PKGS list, but only for waybar's mediaplayer.py, and offers no GTK
+# widget bindings on its own.
+#
+# Launched from h77-sway-dots' sway config via a drop-in autostart
+# file (~/.config/sway/autostart.d/h77-welcome.conf, included through
+# `include ~/.config/sway/autostart.d/*.conf`), in its own floating
+# window (for_window rule, same sway config). Runs every login until
+# "Don't show this again" deletes that one drop-in file -- same trick
+# d77void's own d77-welcome uses (deleting ~/.auto.sh entirely) rather
+# than a flag-file check that would otherwise have to live permanently
+# in the packaged sway config.
+set -eu
+
+AUTOSTART_FILE="$HOME/.config/sway/autostart.d/h77-welcome.conf"
+README="$HOME/README.md"
+
+# chimera-bootstrap's own local-source install (see /etc/h77/
+# installer.conf's own comment) tar-copies the live rootfs verbatim,
+# /run/live/rootfs and all -- so this directory existing is a live
+# BOOT session's own marker, not something a real installed system
+# would ever have on its own next boot. Same role as d77void's own
+# d77-welcome check (os.path.isdir("/lib/live/mount/overlay")), just
+# against this project's actual live-boot marker instead of Debian
+# live-boot's, confirmed against this repo's own installer.conf
+# comment rather than guessed.
+is_live() {
+	[ -d /run/live/rootfs ]
+}
+
+show_about() {
+	if [ -f "$README" ]; then
+		dialog --backtitle "hybrid-d77" --title "About" --textbox "$README" 22 76
+	else
+		dialog --backtitle "hybrid-d77" --title "About" --msgbox \
+			"Welcome to hybrid-d77 (Chimera Linux + Sway + Waybar, dinit init)." \
+			8 60
+	fi
+}
+
+run_installer() {
+	if ! is_live; then
+		dialog --backtitle "hybrid-d77" --title "Install hybrid-d77" \
+			--defaultno --yesno \
+			"This does not look like a live session -- running the \
+installer again could overwrite this system's own disk. Continue anyway?" \
+			10 70 || return 0
+	fi
+	clear
+	doas h77-installer || true
+	printf '\nPress Enter to return to the menu...'
+	read -r _
+}
+
+run_update() {
+	clear
+	doas h77-update || true
+	printf '\nPress Enter to return to the menu...'
+	read -r _
+}
+
+dont_show_again() {
+	rm -f "$AUTOSTART_FILE"
+	dialog --backtitle "hybrid-d77" --title "hybrid-d77" --msgbox \
+		"Won't open automatically at login anymore. Run h77-welcome by hand any time you want it back." \
+		8 60
+}
+
+while :; do
+	choice=$(dialog --backtitle "hybrid-d77" --title "hybrid-d77 welcome" \
+		--cancel-label "Exit" \
+		--menu "Pick an item:" 15 70 5 \
+		about "About / keybinds (README.md)" \
+		install "Install hybrid-d77 to disk" \
+		update "Update hybrid-d77 packages" \
+		dismiss "Don't show this again" \
+		3>&1 1>&2 2>&3) || break
+
+	case "$choice" in
+		about) show_about ;;
+		install) run_installer ;;
+		update) run_update ;;
+		dismiss) dont_show_again ;;
+	esac
+done
+
+clear

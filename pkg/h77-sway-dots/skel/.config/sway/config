@@ -63,11 +63,26 @@ for_window [class="^.*"] border pixel 5
 
 ## Windows Rules
 for_window [app_id="d77run"] floating enable
+for_window [app_id="h77-welcome"] floating enable
 for_window [window_type="dialog"] floating enable
 for_window [window_role="dialog"] floating enable
 
 ### Audio
 exec pipewire &
+
+### Welcome / installer helper (h77-welcome package) -- offers
+### "Install hybrid-d77 to disk" (wraps h77-installer) and "Update
+### hybrid-d77 packages" (wraps h77-update) from one dialog(1) menu,
+### plus the README.md above as an "About" item. Wired as a drop-in
+### under autostart.d/ (see that dir's own h77-welcome.conf) instead of
+### a literal exec line here, specifically so its own "Don't show this
+### again" menu item can delete JUST that one file -- same trick
+### d77void's own d77-welcome uses (deleting ~/.auto.sh entirely)
+### instead of a flag-file check that would otherwise have to live in
+### this packaged config forever. A glob matching zero files is a
+### silent no-op, same as this file's own `include /etc/sway/
+### config.d/*` below once nothing lands there either.
+include ~/.config/sway/autostart.d/*.conf
 
 ### Nighshift (the location set here is for Oporto, Portugal; gather your latitude and longitude at openstreetmap)
 exec wlsunset -g 0.8 -l 41.6 -L -8.62 &

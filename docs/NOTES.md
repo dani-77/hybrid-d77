@@ -1172,3 +1172,83 @@ GitHub). So the real, simple native-host path is just:
 Building h77-* yourself (the old section's content) is still real and
 still documented, but now clearly marked as the secondary path for
 testing a local package change, not the default flow.
+
+## 2026-09-24 :: h77-welcome, a welcome/installer helper (d77void's d77-welcome, adapted)
+
+User's request: a script "parecido com o que tenho para o d77void que
+faz apresentação com um README.md" -- d77void's own d77-welcome
+(~/d77void/common/x86_64/d77-welcome) is a GTK3/python-gi app, launched
+from every login via .auto.sh, that shows ~/README.md (each variant's
+own skel/README.md) and offers a sidebar of post-install actions
+(install packages, set root password, ...) by shelling out to scripts
+in lib-d77-welcome/, with a PrivilegedRunner class bridging GTK to
+`sudo -A`.
+
+Read that whole app plus mkd77.sh's own d77-welcome packaging (cp into
+INCLUDEDIR/usr/bin + .desktop + lib-d77-welcome/) before deciding how
+to port it. Concluded a straight port would be the wrong shape here:
+
+- This project has no greeter at all, on purpose (h77-sway-dots'
+  .profile) -- plain getty login into sway. A GTK app is a much bigger
+  jump from that baseline than d77void's own (which already runs a
+  full GTK/Qt desktop and ships gtk+3 as a matter of course).
+- `dialog` is ALREADY a hard package dependency of the sway image
+  (mklive-image.sh's sway PKGS), added specifically for h77-installer's
+  own "Before you start" notice. python-gobject is also already there,
+  but only for waybar's mediaplayer.py's `gi` import -- no GTK typelib/
+  widget bindings ship with it, so a real port would still need new
+  packages (gtk+3, girepository, the actual GTK gir data) that
+  currently pull in nothing else this project needs.
+- Both actions this project actually needs to offer (`doas
+  h77-installer`, `doas h77-update`) are themselves plain terminal
+  programs already (chimera-installer is an ncurses/dialog TUI itself;
+  h77-update is a plain shell script) -- running them from inside a GTK
+  window would need d77-welcome's own PrivilegedRunner-style askpass
+  shim just to bridge toolkits, for no benefit here.
+
+Built pkg/h77-welcome instead: a single dialog(1) TUI script
+(files/h77-welcome) with a menu of four items -- About (dialog
+--textbox ~/README.md), Install hybrid-d77 to disk (`doas
+h77-installer`, guarded by a --defaultno confirmation when
+/run/live/rootfs is absent -- chimera-bootstrap's own local-source
+install tar-copies that path verbatim, per /etc/h77/installer.conf's
+own comment, so its absence reliably means "already installed", same
+role as d77void's own `/lib/live/mount/overlay` check but against this
+project's actual live-boot marker), Update hybrid-d77 packages (`doas
+h77-update`), and Don't show this again.
+
+Autostart wiring, refined after the user pointed at the elegant part of
+d77void's own approach worth keeping: d77void's "Don't show this
+again" doesn't check a flag -- it deletes ~/.auto.sh outright, so
+opting out needs zero permanent logic anywhere. This project has no
+per-user .auto.sh equivalent (sway/config is one packaged file), so
+first pass here checked a flag file from a literal `exec` line instead
+-- functionally equivalent but leaves a check baked into that packaged
+config forever. Fixed to the same shape as d77void's own trick: a
+NEW drop-in dir, ~/.config/sway/autostart.d/ (h77-sway-dots' own
+skel), holding a single h77-welcome.conf (`exec foot -a h77-welcome -e
+h77-welcome`); sway/config includes it via `include
+~/.config/sway/autostart.d/*.conf` (tilde-expansion already precedented
+in this same file, via the wallpaper's `output * bg
+~/.config/backgrounds/d77.png fill`) -- and "Don't show this again"
+simply `rm -f`s that one file. A glob matching zero files is a silent
+no-op in sway, same as this config's own pre-existing `include
+/etc/sway/config.d/*` at the very bottom. Also added: `for_window
+[app_id="h77-welcome"] floating enable` (same pattern as the existing
+d77run rule).
+
+README.md content: added pkg/h77-sway-dots/skel/README.md (credentials
++ the actual keybind list read straight out of that same package's own
+sway/config, not guessed or copied from d77void's) -- same role as
+every d77void variant's own skel/README.md. Kept in h77-sway-dots
+rather than h77-welcome itself since the keybinds are sway-specific and
+h77-welcome is meant to stay WM-agnostic for any future non-sway
+variant; h77-sway-dots gained depends=["h77-welcome"] for the binary
+its own config and README now rely on.
+
+Wired into the build: h77-welcome added to mklive-image.sh's sway PKGS,
+container/cbuild-entrypoint.sh's H77_PKGS (ordered before h77-sway-dots
+-- its depends= needs it built first, and this loop's own order isn't
+known to be resolved automatically by cbuild), h77-dots' own h77-update
+PKGS list (so an installed system's `doas h77-update` also pulls
+h77-welcome updates), and the CI release title.

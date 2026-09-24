@@ -12,7 +12,12 @@ CPORTS=/home/builder/cports
 # Every package under pkg/ that should be built this way. Add new
 # ones here (and their name to mklive-image.sh's package list) --
 # nothing else needs touching.
-H77_PKGS="h77-dots h77-sway-dots h77-installer h77-install-scripts"
+# h77-welcome listed before h77-sway-dots: the latter's depends=
+# includes the former (see h77-sway-dots' own template.py comment),
+# and this loop builds strictly in this order below -- untested
+# whether cbuild resolves in-category build order on its own, so this
+# doesn't rely on it.
+H77_PKGS="h77-dots h77-welcome h77-sway-dots h77-installer h77-install-scripts"
 
 if [ ! -d "$CPORTS/.git" ]; then
 	echo ">> shallow-cloning chimera-linux/cports (this is a real, fairly"

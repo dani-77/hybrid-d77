@@ -75,7 +75,18 @@ pkg/h77-dots/                  general app dotfiles (/etc/skel): foot,
                                h77-update (updates h77-* on an installed
                                system from the h77-pkgs GitHub Release)
 pkg/h77-sway-dots/             sway/swaylock/swaync/waybar dotfiles
-                               (/etc/skel), depends = ["h77-dots"]
+                               (/etc/skel), depends = ["h77-dots", "h77-welcome"];
+                               also ships skel/README.md (credentials +
+                               keybinds, shown by h77-welcome's "About" item)
+pkg/h77-welcome/               dialog(1) TUI welcome/installer helper,
+                               autostarted by h77-sway-dots' sway config
+                               (until its own "Don't show this again"),
+                               offering Install (h77-installer) and Update
+                               (h77-update) from one menu -- this project's
+                               own equivalent of d77void's GTK d77-welcome,
+                               reusing the `dialog` dependency already
+                               needed by h77-installer instead of adding a
+                               second GUI toolkit
 pkg/h77-installer/             thin wrapper around h77-install-scripts' own
                                patched chimera-installer, pre-loaded with
                                this project's defaults (/etc/h77/
