@@ -8,6 +8,28 @@
 
 ---
 
+## Variants
+
+Two ISOs from the same tree, same base (Chimera, dinit, no greeter,
+`h77-installer`, `h77-welcome`, `h77-update`, the same app set) --
+only the session differs:
+
+| | `sway` (default) | `niri` |
+|---|---|---|
+| Compositor | Sway | niri (scrollable tiling) |
+| Bar | Waybar | [Utumno](https://github.com/dani-77/utumno) (Quickshell) |
+| Launcher | wmenu / fuzzel | Utumno |
+| Lock / power menu | swaylock / fuzzel-power-menu | Utumno |
+| Notifications | swaync | -- |
+| Wallpaper | `output * bg` | Utumno's picker (`~/Wallpaper`) + swaybg |
+| Session dotfiles | `pkg/h77-sway-dots` | `pkg/h77-niri-dots` |
+| ISO | `hybrid-d77-live-x86_64-DATE-sway.iso` | `hybrid-d77-live-x86_64-DATE-niri.iso` |
+
+On niri, Utumno is driven by keybinds through
+[qsd77](https://github.com/dani-77/qsd77) (`qsd77 launcher -c utumno`,
+...); keybinds are listed in `~/README.md` on either variant, shown
+by h77-welcome's "About" item.
+
 ## Why this shape
 
 - [Chimera Linux](https://chimera-linux.org/) pairs a Linux kernel with a
@@ -126,7 +148,7 @@ iso/fetch-pkgs.sh              downloads the latest h77-pkgs release
                                instead of rebuilding locally every time
 container/                     Containerfile + entrypoint (builds the ISO)
                                and cbuild.Containerfile + cbuild-entrypoint.sh
-                               (builds pkg/h77-* into real .apk files via
+                               (builds every pkg/* into real .apk files via
                                cports/cbuild) -- both via sudo podman, FROM
                                Chimera's own official container images
 build.sh                       one command, whole pipeline (see Build below)
@@ -135,7 +157,8 @@ docs/NOTES.md                  field notes -- read before touching the build
 
 ## Build
 
-Two containers, in order: `cbuild` builds `pkg/h77-*` into real `.apk`
+Two containers, in order: `cbuild` builds every `pkg/*` (the `h77-*`
+packages, plus `utumno` and `qsd77`) into real `.apk`
 files (cbuild itself refuses to run as root); the ISO container then
 consumes those and runs `mklive.sh` (needs root, for `mount(8)`).
 
@@ -143,15 +166,17 @@ consumes those and runs `mklive.sh` (needs root, for `mount(8)`).
 
 `iso/mklive-d77.sh` is real Chimera's own `mklive.sh`, meant to run ON
 Chimera -- no container needed at all when the host already is one. It
-just needs a local apk repo at `cbuild-out/hybrid/` to pull `h77-*`
-from, populated either way:
+just needs a local apk repo at `cbuild-out/hybrid/` to pull this
+project's own packages from, populated either way:
 
 - **build it yourself**, via cports/`cbuild` (Chimera's own normal
   package build system, same role xbps-src plays for Void) --
   `container/cbuild-entrypoint.sh` is the exact, real recipe (clone
-  cports, sync `pkg/h77-*` in as a "hybrid" category, `cbuild
-  bootstrap` + `cbuild pkg` per package); run those same commands
-  directly instead of through the container.
+  cports, sync `pkg/*` in as a "hybrid" category -- with a
+  `hybrid/.parent -> ../user` link, without which cbuild can't resolve
+  any dependency outside `hybrid/` -- then `cbuild bootstrap` + `cbuild
+  pkg` per package); run those same commands directly instead of
+  through the container.
 - **or fetch CI's already-built packages**: `./iso/fetch-pkgs.sh`.
 
 Either way, then:
@@ -182,8 +207,8 @@ sudo podman run --rm --privileged --security-opt label=disable \
     -e VARIANT=sway -v "$PWD:/src" -w /src hybrid-d77-build   # or VARIANT=niri
 ```
 
-Or skip the `cbuild` step entirely and pull the latest `h77-*`
-packages already built by CI instead: `iso/fetch-pkgs.sh`, then just
+Or skip the `cbuild` step entirely and pull the latest packages
+already built by CI instead: `iso/fetch-pkgs.sh`, then just
 the ISO half above.
 
 ### Writing the result to a USB drive
@@ -204,8 +229,11 @@ non-interactive format/mount pass, mirroring void-installer's own
 `menu_filesystems`/`create_filesystems` split) → SystemRoot → Kernel →
 Packages → Bootloader → Install, groups/services checklists applied,
 installed-system motd swapped in, reboot into a working Sway/Waybar
-desktop (sway variant; the niri variant is newer and not yet
-hardware-tested). See `docs/NOTES.md` for the full field notes, what's still open
+desktop -- that's the sway variant. The niri variant (2026-09-25) is
+newer: all its packages build and install cleanly, its niri config
+passes `niri validate` on the real niri 26.04, and its ISO builds
+end to end, but it hasn't been booted on real hardware yet. See
+`docs/NOTES.md` for the full field notes, what's still open
 (network-source installs, a couple of services worth double-checking),
 and the reasoning behind every design call, including a few real bugs
 found and fixed via actual hardware testing along the way.
@@ -218,6 +246,14 @@ found and fixed via actual hardware testing along the way.
 - [cports](https://github.com/chimera-linux/cports) — the package
   collection itself; every package name referenced here has been
   verified against it (both the `main` and `user` repo tiers).
+- [niri](https://github.com/niri-wm/niri) and
+  [Quickshell](https://quickshell.org) -- both straight from cports'
+  `user` tier, not rebuilt here.
+- [Utumno](https://github.com/dani-77/utumno) and
+  [qsd77](https://github.com/dani-77/qsd77) -- the same author's own
+  shell and its CLI, packaged here from their tagged releases
+  (`pkg/utumno`, `pkg/qsd77`); their niri config is adapted from a
+  working niri + quickshell-d77 setup.
 - [void-mklive](https://github.com/void-linux/void-mklive) — `void-installer`'s
   own real architecture was the reference point for several patches: its
   Groups/Services checklists (things upstream chimera-installer doesn't
@@ -228,8 +264,9 @@ found and fixed via actual hardware testing along the way.
 
 ## License
 
-This project's own original work (`pkg/h77-*`, `container/`, `iso/`,
-docs) is [MIT](LICENSE). The vendored subtrees under `vendor/` keep
+This project's own original work (`pkg/*`, `container/`, `iso/`,
+docs) is [MIT](LICENSE); Utumno and qsd77 themselves (fetched from
+their own repos at build time, not vendored) are MIT too. The vendored subtrees under `vendor/` keep
 their own upstream licenses in full — GPLv3 for `chimera-live`,
 BSD-2-Clause for `chimera-install-scripts` — see each one's own
 `COPYING.md`.
