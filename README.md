@@ -4,7 +4,7 @@
 
 <h1 align="center">hybrid-d77</h1>
 
-<p align="center">Chimera Linux · <b>Sway</b> + Waybar · <b>dinit</b> — live ISO + installer.</p>
+<p align="center">Chimera Linux · <b>Sway</b> + Waybar or <b>niri</b> + Utumno · <b>dinit</b> — live ISO + installer.</p>
 
 ---
 
@@ -29,9 +29,13 @@
   earlier yambar config was tried first and dropped after real bugs
   showed up on an actual boot (hardcoded battery name, unreliable
   refresh, the wireless display vanishing outright).
+- A second variant, **niri**, uses [Utumno](https://github.com/dani-77/utumno)
+  (Quickshell) as the whole shell -- bar, launcher, lock screen, power
+  menu, wallpaper picker, OSD -- driven through
+  [qsd77](https://github.com/dani-77/qsd77). Both are packaged here too.
 - No greeter/display-manager, even though `greetd` is packaged — Void's
   and Chimera's own convention: a plain `getty` `login:` prompt, with
-  `/etc/motd` documenting the credentials, straight into Sway via
+  `/etc/motd` documenting the credentials, straight into Sway (or niri) via
   `.profile` once logged in. `anon`/`chimera` + `root`/`chimera` are left
   as Chimera's own default, same pattern as Void's `anon`/`voidlinux` —
   no custom user-creation logic.
@@ -42,7 +46,8 @@
 vendor/chimera-live/          vendored fork of chimera-linux/chimera-live
                                (mklive.sh/mklive-image.sh, the mkimage.sh
                                equivalent) -- GPLv3 as a whole, see its own
-                               COPYING.md. Patched with a "sway" case in
+                               COPYING.md. Patched with "sway" and "niri"
+                               cases (sharing one common package list) in
                                mklive-image.sh (every package name verified
                                against the real repo, main + user tiers)
                                and a live-user group fix in initramfs-tools/
@@ -78,8 +83,17 @@ pkg/h77-sway-dots/             sway/swaylock/swaync/waybar dotfiles
                                (/etc/skel), depends = ["h77-dots", "h77-welcome"];
                                also ships skel/README.md (credentials +
                                keybinds, shown by h77-welcome's "About" item)
+pkg/h77-niri-dots/             niri config (/etc/skel) for the niri
+                               variant: Utumno autostart, qsd77 keybinds,
+                               own .profile + README.md; depends =
+                               ["h77-dots", "h77-welcome", "qsd77", "utumno"]
+pkg/utumno/                    Utumno (Quickshell shell), from its own
+                               tagged release, to /usr/share/quickshell/utumno
+pkg/qsd77/                     qsd77 (Go CLI for Utumno's IPC), from its
+                               own tagged release
 pkg/h77-welcome/               dialog(1) TUI welcome/installer helper,
                                autostarted by h77-sway-dots' sway config
+                               (or h77-niri-dots' niri config)
                                (until its own "Don't show this again"),
                                offering Install (h77-installer) and Update
                                (h77-update) from one menu -- this project's
@@ -98,14 +112,16 @@ pkg/h77-install-scripts/       cports package for the patched
                                chimera-installer above (see vendor/
                                chimera-install-scripts/ entry)
 .github/workflows/
-  build-h77-pkgs.yml            builds every pkg/h77-* via cbuild in CI and
+  build-h77-pkgs.yml            builds every pkg/* via cbuild in CI and
                                publishes them as .apk files on a GitHub
                                Release (tag h77-pkgs) -- build once,
                                fetch/pin the release asset instead of
                                rebuilding from source every time
 iso/mklive-d77.sh              wrapper around vendor/chimera-live/mklive.sh,
-                               builds the "sway" variant (main + user repos,
-                               plus this project's own local package repo)
+                               builds the "sway" (default) or "niri" variant
+                               (main + user repos, plus this project's own
+                               local package repo) as
+                               iso/hybrid-d77-live-ARCH-DATE-VARIANT.iso
 iso/fetch-pkgs.sh              downloads the latest h77-pkgs release
                                instead of rebuilding locally every time
 container/                     Containerfile + entrypoint (builds the ISO)
@@ -141,13 +157,15 @@ from, populated either way:
 Either way, then:
 
 ```sh
-doas ./iso/mklive-d77.sh   # needs root, for mount(8)
+doas ./iso/mklive-d77.sh        # sway; needs root, for mount(8)
+doas ./iso/mklive-d77.sh niri   # niri variant
 ```
 
 ### From any host (rootful container)
 
 ```
-./build.sh          # both containers, in order -> iso/*.iso
+./build.sh          # both containers, in order -> iso/hybrid-d77-live-*-sway.iso
+./build.sh niri     # same, niri variant    -> iso/hybrid-d77-live-*-niri.iso
 ```
 
 Needs docker or `sudo podman` (rootless podman won't do the `mount(8)`
@@ -161,7 +179,7 @@ sudo podman run --rm --privileged --security-opt label=disable \
 
 sudo podman build -t hybrid-d77-build -f container/Containerfile .
 sudo podman run --rm --privileged --security-opt label=disable \
-    -v "$PWD:/src" -w /src hybrid-d77-build
+    -e VARIANT=sway -v "$PWD:/src" -w /src hybrid-d77-build   # or VARIANT=niri
 ```
 
 Or skip the `cbuild` step entirely and pull the latest `h77-*`
@@ -173,7 +191,7 @@ the ISO half above.
 ```
 lsblk                                                   # confirm the device
 sudo umount /run/media/$USER/* 2>/dev/null               # if auto-mounted
-sudo dd if=iso/chimera-linux-x86_64-LIVE-*.iso of=/dev/sdX \
+sudo dd if=iso/hybrid-d77-live-x86_64-*-sway.iso of=/dev/sdX \
     bs=4M status=progress conv=fsync && sync
 ```
 
@@ -186,7 +204,8 @@ non-interactive format/mount pass, mirroring void-installer's own
 `menu_filesystems`/`create_filesystems` split) → SystemRoot → Kernel →
 Packages → Bootloader → Install, groups/services checklists applied,
 installed-system motd swapped in, reboot into a working Sway/Waybar
-desktop. See `docs/NOTES.md` for the full field notes, what's still open
+desktop (sway variant; the niri variant is newer and not yet
+hardware-tested). See `docs/NOTES.md` for the full field notes, what's still open
 (network-source installs, a couple of services worth double-checking),
 and the reasoning behind every design call, including a few real bugs
 found and fixed via actual hardware testing along the way.

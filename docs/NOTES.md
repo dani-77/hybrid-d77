@@ -1287,3 +1287,80 @@ end of iso/mklive-d77.sh itself. Recovered this run's own already-built
 ISO by hand (moved + checksummed), verified real with `sha256sum -c`,
 rather than re-running the ~40-minute build again just to test the
 fixed script path.
+
+## 2026-09-25 :: niri variant (Utumno + qsd77), ISOs renamed hybrid-d77-*
+
+New image variant `niri`, alongside `sway`: niri (`user/niri`, 26.04)
+as the compositor, the user's own [Utumno](https://github.com/dani-77/utumno)
+(Quickshell, `user/quickshell` 0.3.1) as the entire shell, driven
+through [qsd77](https://github.com/dani-77/qsd77). New packages:
+
+- `pkg/utumno` -- tagged release tarball (0.1.2) into
+  `/usr/share/quickshell/utumno` (same layout as its own Void template;
+  `qs -c utumno` finds it there). Copied by hand in install() rather
+  than through its Makefile (just an rsync).
+- `pkg/qsd77` -- `build_style = "go"` (cbuild's own go style runs `go
+  mod download` in prepare), tagged release 1.3.3.
+- `pkg/h77-niri-dots` -- niri config adapted from the user's own
+  working niri + quickshell-d77 setup (`~/exchange/niri-qsd77`): qsd77
+  calls retargeted with `-c utumno`, volume/brightness keys through
+  Utumno's `osd` IPC (changes the level AND shows the OSD), own
+  `.profile` (`exec niri` on tty1, plain -- `niri --session` wants a
+  systemd user session) and README.md.
+
+**Real cause of the old "template 'bash' cannot be resolved" found**,
+because qsd77's `hostmakedepends = ["go"]` hit it for real on the
+first cbuild run ("host dependency 'go' does not exist" -- unlike a
+runtime dep, a build tool can't be worked around via the ISO package
+list). cbuild only resolves dependency templates within a package's
+own category plus that category's `.parent` symlink chain
+(src/cbuild/core/template.py, `source_repositories`; cports ships
+`user/.parent -> ../main`). Our `hybrid/` had no `.parent`, so
+NOTHING outside it could ever resolve. cbuild-entrypoint.sh now
+creates `hybrid/.parent -> ../user` (hybrid -> user -> main); after
+that, the full set built cleanly -- all 8 packages, qsd77 compiled
+with go -- and installing h77-niri-dots into a clean Chimera
+container pulled utumno + qsd77 in and put every file where expected.
+The existing "listed in mklive-image.sh instead of depends=" entries
+(bash, chimera-install-scripts, and now quickshell for utumno/qsd77)
+were left as they are; they could now be real depends= instead.
+
+Two cbuild lint rules hit along the way: pkgdesc must start
+uppercase ("Niri session ...", not "niri ..."), and `depends` must
+come before `pkgdesc`/`license`/`url`.
+
+`niri validate` against the shipped config.kdl (real niri 26.04, in
+a Chimera container): "config is valid".
+
+h77-welcome autostart on niri: niri has no glob `include`, so the
+sway trick (a drop-in file under autostart.d/ that "Don't show this
+again" deletes) becomes a marker file,
+`~/.config/niri/h77-welcome.autostart`, checked by a
+`spawn-sh-at-startup`; h77-welcome now deletes both.
+
+Wallpaper: Utumno's picker scans `~/Wallpaper`, and its
+`set-wallpaper.sh` has no niri backend -- it falls through to swww
+(not in cports) then swaybg, so swaybg is in the niri set.
+`~/.config/niri/wallpaper-startup.sh` seeds `~/Wallpaper/d77.png` +
+Utumno's state file on first login, then runs Utumno's own
+documented `set-wallpaper.sh startup` hook.
+
+mklive-image.sh: the sway list was split into `H77_COMMON_PKGS`
+(shared) + sway-only; verified the resolved sway set is byte-identical
+to before the split (97 packages).
+
+h77-update: its hardcoded package list would have tried to upgrade
+(install) h77-sway-dots on a niri system -- now filters the full list
+through `apk info -e`, so only installed packages get upgraded.
+
+ISO naming: `hybrid-d77-live-ARCH-YYYYMMDD-VARIANT.iso` (mirrors
+d77void's own `d77void-live-ARCH-DATE-VARIANT.iso`), via mklive.sh's
+own `-o`, instead of its default `chimera-linux-ARCH-LIVE-...`.
+`./build.sh [sway|niri]`, `iso/mklive-d77.sh [sway|niri]`,
+`VARIANT=` env for the ISO container.
+
+Real bug found along the way: since the 2026-09-24 fix above,
+iso/mklive-d77.sh already moves the ISO into iso/ itself, but
+container/entrypoint.sh still ran its old `cp vendor/chimera-live/
+*.iso` afterwards -- nothing left there to copy, so every container
+build (./build.sh) would have ended in "no ISO produced". Dropped.

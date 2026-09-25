@@ -1,6 +1,6 @@
 name: Build hybrid-d77 packages
 
-# Builds h77-dots/h77-sway-dots/h77-installer/h77-welcome via container/cbuild.Containerfile
+# Builds every package in pkg/ (h77-*, utumno, qsd77) via container/cbuild.Containerfile
 # (real cports/cbuild, not guessed) and publishes them as a GitHub Release:
 # build once in CI, pin/fetch the release asset locally instead of
 # rebuilding from source every time. iso/fetch-pkgs.sh is the consumer side.
@@ -52,7 +52,7 @@ jobs:
       - name: Build the cbuild container image
         run: docker build -t hybrid-d77-cbuild -f container/cbuild.Containerfile .
 
-      - name: Build h77-dots / h77-sway-dots / h77-installer
+      - name: Build the h77-* packages (+ utumno, qsd77)
         run: |
           # The container's "builder" user is a fixed uid 1000
           # (container/cbuild.Containerfile), chosen to match a local
@@ -112,7 +112,7 @@ jobs:
               gh release delete "$tag" --yes --cleanup-tag || true
             fi
             if gh release create "$tag" \
-              --title "hybrid-d77 packages (h77-dots, h77-sway-dots, h77-installer, h77-welcome)" \
+              --title "hybrid-d77 packages (h77-*, utumno, qsd77)" \
               --notes "Built by ${{ github.workflow }} from ${{ github.sha }}. Consumed by iso/fetch-pkgs.sh, not meant to be installed by hand." \
               cbuild-out/*.pub \
               cbuild-out/hybrid/x86_64/*.apk \

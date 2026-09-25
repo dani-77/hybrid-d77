@@ -16,8 +16,9 @@ CPORTS=/home/builder/cports
 # includes the former (see h77-sway-dots' own template.py comment),
 # and this loop builds strictly in this order below -- untested
 # whether cbuild resolves in-category build order on its own, so this
-# doesn't rely on it.
-H77_PKGS="h77-dots h77-welcome h77-sway-dots h77-installer h77-install-scripts"
+# doesn't rely on it. utumno + qsd77 before h77-niri-dots for the same
+# reason (it depends on both).
+H77_PKGS="h77-dots h77-welcome h77-sway-dots utumno qsd77 h77-niri-dots h77-installer h77-install-scripts"
 
 if [ ! -d "$CPORTS/.git" ]; then
 	echo ">> shallow-cloning chimera-linux/cports (this is a real, fairly"
@@ -31,6 +32,15 @@ for p in $H77_PKGS; do
 	rm -rf "$CPORTS/hybrid/$p"
 	cp -a "/src/pkg/$p" "$CPORTS/hybrid/$p"
 done
+# cbuild only looks up dependency templates in a package's own category
+# plus whatever that category's `.parent` symlink chain points at
+# (src/cbuild/core/template.py, source_repositories; cports' own
+# user/.parent -> ../main). hybrid/ had none, so every dependency
+# outside hybrid/ was "unresolved" -- the real cause behind the old
+# "template 'bash' cannot be resolved" workarounds, and what failed
+# qsd77's hostmakedepends on go (2026-09-25). Chaining to user (and
+# through it, main) fixes that.
+ln -sfn ../user "$CPORTS/hybrid/.parent"
 
 cd "$CPORTS"
 

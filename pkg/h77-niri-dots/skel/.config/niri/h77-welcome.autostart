@@ -1,0 +1,3 @@
+# hybrid-d77 :: while this file exists, niri opens h77-welcome at every
+# login (see config.kdl). h77-welcome's "Don't show this again" deletes
+# it; recreate it (any content) to bring the autostart back.

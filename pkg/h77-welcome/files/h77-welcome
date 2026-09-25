@@ -21,6 +21,10 @@
 set -eu
 
 AUTOSTART_FILE="$HOME/.config/sway/autostart.d/h77-welcome.conf"
+# niri variant's equivalent (h77-niri-dots): niri has no glob include,
+# so its config.kdl checks for this marker file instead. Only one of
+# the two ever exists on a given system; removing both is harmless.
+NIRI_AUTOSTART_FILE="$HOME/.config/niri/h77-welcome.autostart"
 README="$HOME/README.md"
 
 # chimera-bootstrap's own local-source install (see /etc/h77/
@@ -68,7 +72,7 @@ run_update() {
 }
 
 dont_show_again() {
-	rm -f "$AUTOSTART_FILE"
+	rm -f "$AUTOSTART_FILE" "$NIRI_AUTOSTART_FILE"
 	dialog --backtitle "hybrid-d77" --title "hybrid-d77" --msgbox \
 		"Won't open automatically at login anymore. Run h77-welcome by hand any time you want it back." \
 		8 60

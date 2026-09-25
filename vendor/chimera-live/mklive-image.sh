@@ -33,6 +33,31 @@ fi
 
 readonly BASE_PKGS="base-full base-live ${KERNEL_PKGS} ${EXTRA_PKGS}"
 
+# hybrid-d77: everything both of our own variants (sway, niri) share --
+# split out of the sway list 2026-09-25 when the niri variant was
+# added, so the two can't silently drift apart. The per-package
+# reasoning still lives in the sway case's own comment block below.
+readonly H77_COMMON_PKGS="foot brightnessctl grim slurp wl-clipboard \
+fuzzel fonts-hack-ttf fonts-nerd-hack fonts-font-awesome-otf bash \
+curl wget2 jq firefox thunderbird \
+elogind libseat-seatd libseat-seatd-dinit mate-polkit \
+dbus dbus-dinit polkit polkit-dinit \
+networkmanager networkmanager-dinit power-profiles-daemon \
+pipewire wireplumber pavucontrol alsa-utils \
+xdg-desktop-portal xdg-desktop-portal-gtk \
+xdg-user-dirs xdg-user-dirs-gtk xdg-utils \
+udisks udiskie udiskie-dinit \
+qt6ct kvantum breeze-gtk nwg-look papirus-icon-theme \
+thunar file-roller \
+acpi bash-completion bc-gh cmus cups system-config-printer \
+fastfetch feh gettext htop inxi imagemagick mousepad mpv \
+musl-locales nano smartmontools transmission ufw unzip usbutils \
+neovim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
+git clang gmake tree-sitter-cli \
+chimera-repo-user \
+dialog \
+h77-dots h77-installer h77-install-scripts h77-welcome"
+
 case "$IMAGE" in
     minimal)
         PKGS="base-minimal base-full-kernel ${KERNEL_PKGS} ${EXTRA_PKGS}"
@@ -80,28 +105,11 @@ case "$IMAGE" in
         # base-full -> base-full-core -> base-bootstrap, confirmed
         # against real templates; chimera-repo-user does not, nothing
         # else pulls it in).
-        PKGS="${BASE_PKGS} sway swaybg swaylock swayidle swayimg waybar \
+        PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
+sway swaybg swaylock swayidle swayimg waybar \
 swaync wmenu cliphist wlsunset xwayland-satellite \
-foot brightnessctl grim slurp wl-clipboard \
-fuzzel fonts-hack-ttf fonts-nerd-hack fonts-font-awesome-otf bash \
-playerctl python-gobject curl wget2 jq firefox thunderbird \
-elogind libseat-seatd libseat-seatd-dinit mate-polkit \
-dbus dbus-dinit polkit polkit-dinit \
-networkmanager networkmanager-dinit power-profiles-daemon \
-pipewire wireplumber pavucontrol alsa-utils \
-xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-gtk \
-xdg-user-dirs xdg-user-dirs-gtk xdg-utils \
-udisks udiskie udiskie-dinit \
-qt6ct kvantum breeze-gtk nwg-look papirus-icon-theme \
-thunar file-roller \
-acpi bash-completion bc-gh cmus cups system-config-printer \
-fastfetch feh gettext htop inxi imagemagick mousepad mpv \
-musl-locales nano smartmontools transmission ufw unzip usbutils \
-neovim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
-git clang gmake tree-sitter-cli \
-chimera-repo-user \
-dialog \
-h77-dots h77-sway-dots h77-installer h77-install-scripts h77-welcome"
+playerctl python-gobject xdg-desktop-portal-wlr \
+h77-sway-dots"
         # waybar (`user` tier -- real, confirmed 2026-09-12, corrects
         # this project's own earlier "doesn't exist" mistake) replaces
         # yambar: real bugs found on real hardware (hardcoded BAT0,
@@ -206,10 +214,35 @@ h77-dots h77-sway-dots h77-installer h77-install-scripts h77-welcome"
         # both already here too. See pkg/h77-welcome/template.py for
         # the full reasoning.
         ;;
+    niri)
+        # hybrid-d77's second variant (2026-09-25): niri as the
+        # compositor, the user's own Utumno (Quickshell) as the whole
+        # shell -- bar, launcher, lock screen, power menu, wallpaper
+        # picker, OSD -- driven by keybinds through qsd77. All three
+        # built by this project (pkg/utumno, pkg/qsd77, pkg/
+        # h77-niri-dots). niri + quickshell are `user` tier (confirmed
+        # against the real cports tree, niri 26.04, quickshell 0.3.1).
+        #
+        # quickshell is listed here, not as utumno/qsd77's own
+        # depends=: same cbuild "template cannot be resolved"
+        # limitation as h77-dots' bash (see the sway case below).
+        # Utumno's other runtime commands (amixer, brightnessctl, curl,
+        # powerprofilesctl) are already in H77_COMMON_PKGS.
+        # swaybg: Utumno's wallpaper script has no niri-specific
+        # backend, it falls through to its generic swww -> swaybg
+        # chain, and swww isn't in cports. xwayland-satellite is
+        # niri's own depends= already, listed anyway for clarity.
+        # xdg-desktop-portal-gnome: niri's own niri-portals.conf
+        # (installed by the niri package) prefers it for screencasting.
+        PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
+niri xwayland-satellite swaybg xdg-desktop-portal-gnome \
+quickshell utumno qsd77 \
+h77-niri-dots"
+        ;;
     *)
         echo "unknown image type: $IMAGE"
         echo
-        echo "supported image types: base gnome plasma sway"
+        echo "supported image types: base gnome plasma sway niri"
         exit 1
         ;;
 esac

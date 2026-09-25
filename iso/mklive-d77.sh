@@ -1,7 +1,7 @@
 #!/bin/sh
-# hybrid-d77 :: our own "sway" image variant, via chimera-live's own
-# mklive-image.sh -b flag mechanism (see vendor/chimera-live/
-# mklive-image.sh's "sway" case, added 2026-09-12).
+# hybrid-d77 :: our own image variants ("sway", and "niri" since
+# 2026-09-25), via chimera-live's own mklive-image.sh -b flag mechanism
+# (see vendor/chimera-live/mklive-image.sh's "sway"/"niri" cases).
 #
 # h77-dots/h77-sway-dots are built via container/cbuild.Containerfile +
 # cbuild-entrypoint.sh into a real local apk repo at cbuild-out/hybrid/
@@ -11,7 +11,17 @@
 # mklive.sh's own -r help text: "Path to apk repository."), so our
 # local repo is just another -r entry alongside the two real
 # repo.chimera-linux.org ones.
+#
+# Usage: iso/mklive-d77.sh [sway|niri] [extra mklive.sh args...]
+# (variant defaults to sway). The ISO is named
+# hybrid-d77-live-ARCH-YYYYMMDD-VARIANT.iso, same scheme as d77void's
+# own d77void-live-ARCH-DATE-VARIANT.iso, via mklive.sh's own -o
+# (its default would be chimera-linux-ARCH-LIVE-DATE-VARIANT.iso).
 set -e
+VARIANT=sway
+case "${1:-}" in
+	sway|niri) VARIANT="$1"; shift ;;
+esac
 SELF_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SELF_DIR/.." && pwd)"
 LOCAL_REPO="$REPO_ROOT/cbuild-out/hybrid"
@@ -61,7 +71,9 @@ cd "$SELF_DIR/../vendor/chimera-live"
 # the whole process before any such step could run, so the ISO was
 # silently left behind in vendor/chimera-live/ instead of iso/ -- found
 # the same way, running it for real.
-./mklive-image.sh -b sway -- \
+ISO_NAME="hybrid-d77-live-$(uname -m)-$(date '+%Y%m%d')-$VARIANT.iso"
+./mklive-image.sh -b "$VARIANT" -- \
+    -o "$ISO_NAME" \
     -r https://repo.chimera-linux.org/current/main \
     -r https://repo.chimera-linux.org/current/user \
     -r "$LOCAL_REPO" \
@@ -70,6 +82,6 @@ cd "$SELF_DIR/../vendor/chimera-live"
 
 echo ">> moving the ISO to $REPO_ROOT/iso/"
 mkdir -p "$REPO_ROOT/iso"
-mv ./*.iso "$REPO_ROOT/iso/"
-( cd "$REPO_ROOT/iso" && for f in *.iso; do sha256sum "$f" > "$f.sha256"; done )
-ls -lh "$REPO_ROOT"/iso/*.iso
+mv "$ISO_NAME" "$REPO_ROOT/iso/"
+( cd "$REPO_ROOT/iso" && sha256sum "$ISO_NAME" > "$ISO_NAME.sha256" )
+ls -lh "$REPO_ROOT/iso/$ISO_NAME"
