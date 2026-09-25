@@ -1382,3 +1382,32 @@ build (./build.sh) would have ended in "no ISO produced". Dropped.
   but not yet booted: Utumno bar + wallpaper seeding, qsd77 binds,
   amixer volume under pipewire and plain `exec niri` still unverified
   on real hardware.
+
+### Quickshell rebuilt with its Hyprland module (user caught this)
+
+cports' `user/quickshell` is built with `-DHYPRLAND=OFF` and
+`-DSCREENCOPY_HYPRLAND_TOPLEVEL=OFF` -- same as Void's own package,
+which the user already knew didn't run Utumno. Utumno's
+`modules/Bar.qml` references `WorkspacesHyprland` (which does `import
+Quickshell.Hyprland`) directly in an inline `Component`, so the QML
+engine has to resolve that module just to load the bar -- on niri
+too, even though that Loader branch is never taken there. Without the
+module, the bar fails to load.
+
+Fix: `pkg/quickshell-h77`, cports' own template copied verbatim minus
+those two flags (both default ON; the module is IPC over Hyprland's
+socket, needs no Hyprland installed). First done as a same-name
+`quickshell` at pkgrel 100 to outrank cports' -r0 -- **user caught the
+flaw**: the first cports version bump would win apk's highest-version
+pick and silently swap it back out on `apk upgrade`. Renamed to
+`quickshell-h77` instead, which apk never replaces on its own;
+utumno and qsd77 now declare `depends = ["quickshell-h77"]` for real
+(possible since the `.parent` fix).
+
+Also self-inflicted, same session: editing mklive-image.sh's comments
+WHILE a sway ISO build was running it. sh reads scripts
+incrementally, so after mklive.sh returned it resumed at the old byte
+offset in the changed file, landed mid-text and ran `echo "supported
+image types..."`/`exit 1` -- after the ISO had been generated fine, so
+it was only left un-moved in vendor/chimera-live/; moved and
+checksummed by hand. Don't edit build scripts under a running build.

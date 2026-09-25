@@ -10,7 +10,9 @@
 # install_files() does the same copy without pulling rsync into the
 # build root.
 #
-# Runtime deps: quickshell itself (`user` tier) plus the commands its
+# depends: quickshell-h77 (this project's own Quickshell build, WITH
+# the Hyprland QML module its bar needs -- see that template). Runtime
+# deps besides that: the commands its
 # QML actually shells out to -- amixer (alsa-utils), brightnessctl,
 # curl, powerprofilesctl (power-profiles-daemon), checked against the
 # source, not copied blindly from the Void template (whose
@@ -23,6 +25,7 @@
 pkgname = "utumno"
 pkgver = "0.1.2"
 pkgrel = 0
+depends = ["quickshell-h77"]
 pkgdesc = "Minimal Quickshell desktop shell for Wayland compositors"
 license = "MIT"
 url = "https://github.com/dani-77/utumno"

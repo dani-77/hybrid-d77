@@ -18,7 +18,7 @@ CPORTS=/home/builder/cports
 # whether cbuild resolves in-category build order on its own, so this
 # doesn't rely on it. utumno + qsd77 before h77-niri-dots for the same
 # reason (it depends on both).
-H77_PKGS="h77-dots h77-welcome h77-sway-dots utumno qsd77 h77-niri-dots h77-installer h77-install-scripts"
+H77_PKGS="h77-dots h77-welcome h77-sway-dots quickshell-h77 utumno qsd77 h77-niri-dots h77-installer h77-install-scripts"
 
 if [ ! -d "$CPORTS/.git" ]; then
 	echo ">> shallow-cloning chimera-linux/cports (this is a real, fairly"

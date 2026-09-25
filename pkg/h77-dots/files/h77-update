@@ -30,7 +30,7 @@ TAG="${1:-h77-pkgs}"
 # Every package this project builds; only the ones actually installed
 # get upgraded (below) -- a sway install must never pull in the niri
 # variant's packages, or vice versa.
-ALL_PKGS="h77-dots h77-sway-dots h77-niri-dots utumno qsd77 h77-installer h77-install-scripts h77-welcome"
+ALL_PKGS="h77-dots h77-sway-dots h77-niri-dots quickshell-h77 utumno qsd77 h77-installer h77-install-scripts h77-welcome"
 
 [ "$(id -u)" -eq 0 ] || { echo "run as root (doas h77-update)" >&2; exit 1; }
 command -v curl > /dev/null || { echo "!! curl is required" >&2; exit 1; }

@@ -223,9 +223,10 @@ h77-sway-dots"
         # h77-niri-dots). niri + quickshell are `user` tier (confirmed
         # against the real cports tree, niri 26.04, quickshell 0.3.1).
         #
-        # quickshell is listed here, not as utumno/qsd77's own
-        # depends=: same cbuild "template cannot be resolved"
-        # limitation as h77-dots' bash (see the sway case below).
+        # quickshell-h77: this project's own Quickshell build with the
+        # Hyprland QML module ON (pkg/quickshell-h77) -- cports'
+        # quickshell has it OFF and Utumno's bar won't load without
+        # it. Also utumno/qsd77's own depends=, listed here anyway.
         # Utumno's other runtime commands (amixer, brightnessctl, curl,
         # powerprofilesctl) are already in H77_COMMON_PKGS.
         # swaybg: Utumno's wallpaper script has no niri-specific
@@ -242,7 +243,7 @@ h77-sway-dots"
         # unix_chkpwd, part of base).
         PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
 niri xwayland-satellite swaybg swaync swayidle xdg-desktop-portal-gnome \
-quickshell utumno qsd77 \
+quickshell-h77 utumno qsd77 \
 h77-niri-dots"
         ;;
     *)

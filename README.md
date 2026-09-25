@@ -112,6 +112,11 @@ pkg/h77-niri-dots/             niri config (/etc/skel) for the niri
                                ["h77-dots", "h77-welcome", "qsd77", "utumno"]
 pkg/utumno/                    Utumno (Quickshell shell), from its own
                                tagged release, to /usr/share/quickshell/utumno
+pkg/quickshell-h77/            cports' own quickshell template with the
+                               Hyprland QML module turned back ON (cports
+                               and Void both build it OFF, and Utumno's bar
+                               won't load without it); own package name so
+                               a cports version bump can never swap it out
 pkg/qsd77/                     qsd77 (Go CLI for Utumno's IPC), from its
                                own tagged release
 pkg/h77-welcome/               dialog(1) TUI welcome/installer helper,
@@ -247,9 +252,9 @@ found and fixed via actual hardware testing along the way.
 - [cports](https://github.com/chimera-linux/cports) — the package
   collection itself; every package name referenced here has been
   verified against it (both the `main` and `user` repo tiers).
-- [niri](https://github.com/niri-wm/niri) and
-  [Quickshell](https://quickshell.org) -- both straight from cports'
-  `user` tier, not rebuilt here.
+- [niri](https://github.com/niri-wm/niri) -- straight from cports'
+  `user` tier. [Quickshell](https://quickshell.org) -- cports' own
+  template, rebuilt here with its Hyprland module enabled.
 - [Utumno](https://github.com/dani-77/utumno) and
   [qsd77](https://github.com/dani-77/qsd77) -- the same author's own
   shell and its CLI, packaged here from their tagged releases
