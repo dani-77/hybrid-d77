@@ -28,22 +28,24 @@ binds {
     // === Audio Controls ===
     // Through Utumno's own OSD IPC: it changes the level (amixer/
     // brightnessctl) AND shows the on-screen indicator in one go.
+    // Via qsd77's raw IPC passthrough, not plain `qs`: see the
+    // spawn-at-startup comment in ../config.kdl (XDG_CONFIG_DIRS).
     XF86AudioRaiseVolume allow-when-locked=true {
-        spawn "qs" "-c" "utumno" "ipc" "call" "osd" "volumeUp";
+        spawn "qsd77" "ipc" "call" "osd" "volumeUp" "-c" "utumno";
     }
     XF86AudioLowerVolume allow-when-locked=true {
-        spawn "qs" "-c" "utumno" "ipc" "call" "osd" "volumeDown";
+        spawn "qsd77" "ipc" "call" "osd" "volumeDown" "-c" "utumno";
     }
     XF86AudioMute allow-when-locked=true {
-        spawn "qs" "-c" "utumno" "ipc" "call" "osd" "volumeMuteToggle";
+        spawn "qsd77" "ipc" "call" "osd" "volumeMuteToggle" "-c" "utumno";
     }
 
     // === Brightness Controls ===
     XF86MonBrightnessUp allow-when-locked=true {
-       spawn "qs" "-c" "utumno" "ipc" "call" "osd" "brightnessUp";
+       spawn "qsd77" "ipc" "call" "osd" "brightnessUp" "-c" "utumno";
     }
     XF86MonBrightnessDown allow-when-locked=true {
-       spawn "qs" "-c" "utumno" "ipc" "call" "osd" "brightnessDown";
+       spawn "qsd77" "ipc" "call" "osd" "brightnessDown" "-c" "utumno";
     }
 
     // === Window Management ===

@@ -1411,3 +1411,21 @@ offset in the changed file, landed mid-text and ran `echo "supported
 image types..."`/`exit 1` -- after the ISO had been generated fine, so
 it was only left un-moved in vendor/chimera-live/; moved and
 checksummed by hand. Don't edit build scripts under a running build.
+
+### Real boot of the niri ISO: `qs -c utumno` finds nothing (user caught it)
+
+First real boot (user, 2026-09-25): Utumno didn't start from
+`spawn-at-startup "qs" "-c" "utumno"`, but did via `qsd77 run -c
+utumno`. Cause: qs only looks for named configs under
+`$XDG_CONFIG_DIRS/quickshell/<name>` (default `/etc/xdg`), while the
+package installs to `/usr/share/quickshell/utumno` (same path as its
+Void template) -- qsd77's quickshellEnv() prepends `/usr/share` to
+XDG_CONFIG_DIRS before exec'ing qs, which is why it works through
+qsd77 only. The earlier "`qs -c utumno` finds it there" note in the
+utumno entry above was wrong -- taken from Utumno's own docs, never
+verified.
+
+Fixed in h77-niri-dots: autostart via `qsd77 run -c utumno`, and the
+five OSD keybinds (same bug, not yet noticed on the boot) via
+`qsd77 ipc call osd <action> -c utumno`. Everything else already went
+through qsd77 or called Utumno's script by full path.

@@ -213,7 +213,11 @@ spawn-at-startup "swaync"
 // needed: niri powers monitors back on by itself on any input.
 spawn-at-startup "swayidle" "-w" "timeout" "300" "qsd77 locker -c utumno" "timeout" "600" "niri msg action power-off-monitors" "before-sleep" "qsd77 locker -c utumno"
 // Utumno itself, plus its saved wallpaper (see wallpaper-startup.sh).
-spawn-at-startup "qs" "-c" "utumno"
+// Through qsd77, not plain `qs -c utumno`: the utumno package lives in
+// /usr/share/quickshell/utumno, and qs only searches
+// $XDG_CONFIG_DIRS/quickshell (default /etc/xdg) -- qsd77 prepends
+// /usr/share to XDG_CONFIG_DIRS before calling qs.
+spawn-at-startup "qsd77" "run" "-c" "utumno"
 spawn-at-startup "sh" "-c" "~/.config/niri/wallpaper-startup.sh"
 // h77-welcome (live/installer helper): runs every login while this
 // marker file exists -- its own "Don't show this again" deletes it,

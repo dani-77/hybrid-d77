@@ -2,8 +2,10 @@
 # (github.com/dani-77/utumno), as the niri variant's bar/launcher/lock
 # screen. Same install layout as its own Void xbps-src template (void/
 # srcpkgs/utumno in that repo): the whole tree under /usr/share/
-# quickshell/utumno, which `qs -c utumno` picks up the same way as a
-# ~/.config/quickshell/utumno checkout.
+# quickshell/utumno. NOT found by a plain `qs -c utumno` (qs only
+# searches $XDG_CONFIG_DIRS/quickshell, default /etc/xdg) -- launch it
+# through `qsd77 run -c utumno`, which prepends /usr/share to
+# XDG_CONFIG_DIRS first (confirmed on the first real niri boot).
 #
 # Installed by hand here instead of through its own Makefile: that
 # Makefile is just an `rsync -a --delete` with a few excludes, and
