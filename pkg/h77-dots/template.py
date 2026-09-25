@@ -147,6 +147,9 @@
 # logo.png, replacing the old images/original.png entirely, now
 # removed as dead weight), and the D77 Void icon glyph swapped for a
 # "chi" character in the module icons (Chimera-appropriate).
+# 2026-09-25: logo.png itself replaced with the project's own
+# assets/logo.png (downscaled 1254 -> 512px) -- the synced one was still
+# d77void's monochrome "D77" mark, not hybrid-d77's.
 
 pkgname = "h77-dots"
 pkgver = "0.1.0"
