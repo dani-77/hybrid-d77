@@ -21,7 +21,7 @@ super + y -> wallpaper picker
 
 super + n -> notification center (swaync)
 
-super + alt + l -> lock screen
+super + l -> lock screen
 
 super + x -> power menu
 
@@ -32,6 +32,10 @@ super + f -> maximize column
 super + shift + f -> fullscreen
 
 super + shift + t -> toggle floating
+
+super + arrows -> move focus
+
+super + shift + arrows -> move window/column
 
 super + 1..9 -> workspace 1..9
 
