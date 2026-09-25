@@ -10,6 +10,9 @@
 # volume/brightness keys routed through Utumno's OSD IPC instead of
 # bare amixer/brightnessctl, terminal alacritty -> foot (the terminal
 # both variants actually ship), dms-only includes dropped.
+# swaync (config copied verbatim from h77-sway-dots -- nothing in it
+# is sway-specific) added 2026-09-25 as the notification daemon, since
+# Utumno has none; Mod+N toggles its panel (no bar button for it here).
 #
 # Ships its own /etc/skel/.profile and README.md, same paths as
 # h77-sway-dots -- the two are alternative sessions, one per ISO, never

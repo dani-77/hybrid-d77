@@ -205,6 +205,8 @@ spawn-at-startup "udiskie" "-a"
 spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
 spawn-sh-at-startup "xdg-user-dirs-update; xdg-user-dirs-gtk-update"
 spawn-at-startup "brightnessctl" "set" "50%"
+// Notifications (Utumno has no notification server of its own).
+spawn-at-startup "swaync"
 // Utumno itself, plus its saved wallpaper (see wallpaper-startup.sh).
 spawn-at-startup "qs" "-c" "utumno"
 spawn-at-startup "sh" "-c" "~/.config/niri/wallpaper-startup.sh"

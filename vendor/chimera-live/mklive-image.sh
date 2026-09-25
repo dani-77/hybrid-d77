@@ -234,8 +234,10 @@ h77-sway-dots"
         # niri's own depends= already, listed anyway for clarity.
         # xdg-desktop-portal-gnome: niri's own niri-portals.conf
         # (installed by the niri package) prefers it for screencasting.
+        # swaync: notification daemon (Utumno has none), same package
+        # and config as the sway variant.
         PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
-niri xwayland-satellite swaybg xdg-desktop-portal-gnome \
+niri xwayland-satellite swaybg swaync xdg-desktop-portal-gnome \
 quickshell utumno qsd77 \
 h77-niri-dots"
         ;;

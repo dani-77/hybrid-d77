@@ -20,7 +20,7 @@ only the session differs:
 | Bar | Waybar | [Utumno](https://github.com/dani-77/utumno) (Quickshell) |
 | Launcher | wmenu / fuzzel | Utumno |
 | Lock / power menu | swaylock / fuzzel-power-menu | Utumno |
-| Notifications | swaync | -- |
+| Notifications | swaync | swaync (`Super+N`) |
 | Wallpaper | `output * bg` | Utumno's picker (`~/Wallpaper`) + swaybg |
 | Session dotfiles | `pkg/h77-sway-dots` | `pkg/h77-niri-dots` |
 | ISO | `hybrid-d77-live-x86_64-DATE-sway.iso` | `hybrid-d77-live-x86_64-DATE-niri.iso` |

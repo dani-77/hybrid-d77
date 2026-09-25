@@ -19,6 +19,8 @@ super + d / super + tab -> overview
 
 super + y -> wallpaper picker
 
+super + n -> notification center (swaync)
+
 super + alt + l -> lock screen
 
 super + x -> power menu

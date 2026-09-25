@@ -12,6 +12,9 @@ binds {
     }
 
     Super+X hotkey-overlay-title="Power Menu: Toggle" { spawn "qsd77" "session" "-c" "utumno"; }
+    Mod+N hotkey-overlay-title="Notification Center" {
+        spawn "swaync-client" "-t" "-sw";
+    }
     Mod+Y hotkey-overlay-title="Browse Wallpapers" {
         spawn "qsd77" "wallpaper" "-c" "utumno";
     }

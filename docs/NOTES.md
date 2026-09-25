@@ -1367,11 +1367,9 @@ build (./build.sh) would have ended in "no ISO produced". Dropped.
 
 ### Still open on the niri variant
 
-- **No notification daemon.** The sway variant runs swaync; Utumno has
-  no notification server and h77-niri-dots starts none, so
-  notify-send/app notifications go nowhere on niri. swaync (already a
-  package here) or mako would slot in via one `spawn-at-startup` +
-  one package in the niri list -- left for the user to pick.
+- ~~No notification daemon.~~ Fixed same day, user's pick: swaync,
+  same package and config as the sway variant (`spawn-at-startup
+  "swaync"`, `Mod+N` toggles its panel).
 - ISO built (hybrid-d77-live-x86_64-20260925-niri.iso, ~10 min, all
   niri/quickshell/utumno/qsd77 packages confirmed in the install log)
   but not yet booted: Utumno bar + wallpaper seeding, qsd77 binds,
