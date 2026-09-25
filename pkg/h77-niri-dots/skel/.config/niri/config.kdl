@@ -207,6 +207,11 @@ spawn-sh-at-startup "xdg-user-dirs-update; xdg-user-dirs-gtk-update"
 spawn-at-startup "brightnessctl" "set" "50%"
 // Notifications (Utumno has no notification server of its own).
 spawn-at-startup "swaync"
+// Idle: lock after 5 min, monitors off after 10, lock before suspend --
+// same timings as the sway variant's swayidle, but locking through
+// Utumno's own lock screen (qsd77) instead of swaylock. No `resume`
+// needed: niri powers monitors back on by itself on any input.
+spawn-at-startup "swayidle" "-w" "timeout" "300" "qsd77 locker -c utumno" "timeout" "600" "niri msg action power-off-monitors" "before-sleep" "qsd77 locker -c utumno"
 // Utumno itself, plus its saved wallpaper (see wallpaper-startup.sh).
 spawn-at-startup "qs" "-c" "utumno"
 spawn-at-startup "sh" "-c" "~/.config/niri/wallpaper-startup.sh"

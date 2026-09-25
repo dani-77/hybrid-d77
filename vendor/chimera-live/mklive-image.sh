@@ -236,8 +236,12 @@ h77-sway-dots"
         # (installed by the niri package) prefers it for screencasting.
         # swaync: notification daemon (Utumno has none), same package
         # and config as the sway variant.
+        # swayidle: idle/before-sleep auto-lock, calling Utumno's own
+        # lock screen (qsd77 locker) -- no swaylock needed, Utumno locks
+        # natively via ext-session-lock + PAM (linux-pam's setuid
+        # unix_chkpwd, part of base).
         PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
-niri xwayland-satellite swaybg swaync xdg-desktop-portal-gnome \
+niri xwayland-satellite swaybg swaync swayidle xdg-desktop-portal-gnome \
 quickshell utumno qsd77 \
 h77-niri-dots"
         ;;

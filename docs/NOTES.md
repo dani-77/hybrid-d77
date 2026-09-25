@@ -1370,6 +1370,13 @@ build (./build.sh) would have ended in "no ISO produced". Dropped.
 - ~~No notification daemon.~~ Fixed same day, user's pick: swaync,
   same package and config as the sway variant (`spawn-at-startup
   "swaync"`, `Mod+N` toggles its panel).
+- Idle auto-lock (user caught this one): sway locks after 5 min and
+  before sleep via swayidle; niri had nothing -- the screen only
+  locked on the keybind. Now swayidle on niri too, calling Utumno's
+  lock (`qsd77 locker -c utumno`); swaylock itself NOT needed --
+  Utumno locks natively (WlSessionLock + PAM with its own
+  `auth required pam_unix.so`; linux-pam's setuid unix_chkpwd, part of
+  base, confirmed in a Chimera container).
 - ISO built (hybrid-d77-live-x86_64-20260925-niri.iso, ~10 min, all
   niri/quickshell/utumno/qsd77 packages confirmed in the install log)
   but not yet booted: Utumno bar + wallpaper seeding, qsd77 binds,

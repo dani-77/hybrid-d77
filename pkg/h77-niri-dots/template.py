@@ -13,6 +13,9 @@
 # swaync (config copied verbatim from h77-sway-dots -- nothing in it
 # is sway-specific) added 2026-09-25 as the notification daemon, since
 # Utumno has none; Mod+N toggles its panel (no bar button for it here).
+# swayidle added the same day: auto-lock on idle/before sleep through
+# Utumno's own lock screen (`qsd77 locker -c utumno`), same timings as
+# the sway variant's swayidle+swaylock.
 #
 # Ships its own /etc/skel/.profile and README.md, same paths as
 # h77-sway-dots -- the two are alternative sessions, one per ISO, never
