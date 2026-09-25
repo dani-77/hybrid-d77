@@ -11,7 +11,7 @@ hybrid-d77 packages" below.
 
 ## Keybinds
 
-super + return / super + t -> terminal (foot)
+super + return -> terminal (foot)
 
 super + space -> app launcher (Utumno)
 
