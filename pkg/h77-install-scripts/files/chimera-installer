@@ -1690,14 +1690,14 @@ menu_entry() {
 
 # entry point
 
-ui_dialog --title "${DLG_BOLD}${DLG_RED} Welcome to Chimera Linux installation${DLG_RESET}" \
+ui_dialog --title "${DLG_BOLD}${DLG_RED} Welcome to hybrid-d77 installation${DLG_RESET}" \
     --msgbox "\n
-Welcome to Chimera Linux installation.\n\n
-Chimera Linux is a general-purpose Linux distribution built from scratch.\n
+Welcome to hybrid-d77 installation.\n\n
+hybrid-d77 is a desktop system built on top of Chimera Linux.\n
 This program will guide you through installing it onto your computer.\n\n
 You will be given a variety of options allowing you to customize the setup.\n\n
-If you need more help, please refer to ${DLG_BOLD}https://chimera-linux.org/docs/${DLG_RESET}\n
-or one of our communication channels." 16 80
+If you need more help, please refer to ${DLG_BOLD}https://github.com/dani-77/hybrid-d77${DLG_RESET}\n
+or to Chimera's own docs at ${DLG_BOLD}https://chimera-linux.org/docs/${DLG_RESET}" 16 80
 
 if [ -z "$SKIP_UPDATE_CHECK" ]; then
     ui_dialog --yesno "${DLG_BOLD}This installer is experimental.${DLG_RESET}\n
