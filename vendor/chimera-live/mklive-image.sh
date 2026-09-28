@@ -84,7 +84,7 @@ case "$IMAGE" in
         # Alpine's community/AUR). greetd IS real (greetd, greetd-dinit,
         # greetd-man) but deliberately not used here -- the user's own
         # call: Void and Chimera's own convention is a plain getty
-        # login: prompt, with /etc/motd documenting the anon/chimera and
+        # login: prompt, with /etc/issue documenting the anon/chimera and
         # root/chimera credentials, no greeter needed. udiskie IS used
         # (real: udiskie, udiskie-dinit) -- `udiskie -a` non-interactive
         # auto-mount, same as every other d77 variant, needs h77-dots'

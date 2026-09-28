@@ -1,18 +1,17 @@
 ###############################################################################
 
-Welcome to Chimera Linux. To log in, use either of:
+Welcome to hybrid-d77 (built on Chimera Linux). To log in, use either of:
 
 	- root:@PASSWORD@
 	- @USER@:@PASSWORD@
 
 The `@USER@` user is in the group `wheel`, which has `doas(1)` permissions.
 
-To install the system, please follow the documentation. Both local and
-network installations are possible from this media, with network install
-being the recommended approach.
+To install the system to disk, run: doas h77-installer
 
-Thank you for trying Chimera Linux!
+Thank you for trying hybrid-d77!
 
+    https://github.com/dani-77/hybrid-d77
     https://chimera-linux.org
 
 ###############################################################################

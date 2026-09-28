@@ -218,9 +218,13 @@
 # set except `dialog`, which is listed directly in mklive-image.sh's
 # sway PKGS instead.
 
+# 2026-09-28: the motd swap in menu_install removed -- h77-dots no
+# longer ships a motd at all (see its own template.py), so there is
+# nothing live-only left in /etc/motd to replace.
+
 pkgname = "h77-install-scripts"
 pkgver = "0.6.1"
-pkgrel = 0
+pkgrel = 1
 build_style = "meta"
 pkgdesc = "Patched chimera-install-scripts for hybrid-d77"
 license = "BSD-2-Clause"

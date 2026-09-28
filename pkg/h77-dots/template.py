@@ -43,10 +43,6 @@
 #   - files/50-udisks.rules: ~/d77void/common/50-udisks.rules (the same
 #     rule ported to several earlier projects of this author's own --
 #     grants org.freedesktop.udisks(2).* to the `storage` group.
-#   - files/motd: shown at login, documents the anon/chimera and
-#     root/chimera credentials -- no greeter needed (see h77-sway-dots'
-#     .profile for the reasoning: Void's and Chimera's own convention,
-#     the user's own call, even though greetd IS packaged here too).
 #
 # `storage` group: Chimera's base install does NOT create one (its own
 # default groups -- adm, wheel, audio, video, network, ... -- confirmed
@@ -151,9 +147,15 @@
 # assets/logo.png (downscaled 1254 -> 512px) -- the synced one was still
 # d77void's monochrome "D77" mark, not hybrid-d77's.
 
+# 2026-09-28: files/motd and files/motd-installed dropped, user's own
+# call. The live credentials are already shown before login by
+# chimera-live's own /etc/issue (vendor/chimera-live/data/issue.in,
+# which now also points at `doas h77-installer`), so the live motd
+# only repeated it; the installed-system one went with it.
+
 pkgname = "h77-dots"
 pkgver = "0.1.0"
-pkgrel = 0
+pkgrel = 1
 build_style = "meta"
 pkgdesc = "General app dotfiles for hybrid-d77"
 license = "custom:meta"
@@ -167,7 +169,7 @@ url = "https://github.com/dani-77/hybrid-d77"
 # a cbuild quirk/limitation, not investigated further). "bash" is
 # listed directly in mklive-image.sh's sway package set instead, which
 # works reliably and is functionally equivalent for our purposes.
-# We genuinely install straight into /etc (skel content + motd), which
+# We genuinely install straight into /etc (skel content), which
 # cbuild's own lint flags by default ("'/etc' exists, verify if this
 # is necessary and then set the 'etcfiles' option") -- confirmed the
 # real syntax against real templates (main/zsh, main/mc, ...), it's a
@@ -195,20 +197,6 @@ def install(self):
     self.install_file(
         self.files_path / "50-udisks.rules", "usr/share/polkit-1/rules.d"
     )
-    self.install_file(self.files_path / "motd", "etc")
-    # motd-installed: a short, generic welcome with NO login
-    # credentials and no live-only install instructions -- the live
-    # motd above is wrong once actually installed to disk (stale
-    # "password: chimera" after the real install sets a real password;
-    # "doas h77-installer" makes no sense on an already-installed
-    # system). Installed to usr/share, not etc, so it never becomes
-    # the ACTUAL /etc/motd by just being packaged -- h77-install-
-    # scripts' own menu_install copies it over $sysroot/etc/motd as
-    # the very last step of a real install (see its own patch
-    # comment), once $sysroot/usr/share/h77/motd-installed (this same
-    # file, now inside the freshly bootstrapped target) actually
-    # exists to copy from. User's own request, 2026-09-13.
-    self.install_file(self.files_path / "motd-installed", "usr/share/h77")
     # QT_QPA_PLATFORMTHEME=qt6ct: without this, Qt apps ignore
     # qt6ct/Kvantum entirely and fall back to their own default style
     # -- user's own call, real Void convention (d77void's own D77_CORE

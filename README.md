@@ -58,7 +58,7 @@ by h77-welcome's "About" item.
   [qsd77](https://github.com/dani-77/qsd77). Both are packaged here too.
 - No greeter/display-manager, even though `greetd` is packaged — Void's
   and Chimera's own convention: a plain `getty` `login:` prompt, with
-  `/etc/motd` documenting the credentials, straight into Sway (or niri) via
+  `/etc/issue` documenting the credentials, straight into Sway (or niri) via
   `.profile` once logged in. `anon`/`chimera` + `root`/`chimera` are left
   as Chimera's own default, same pattern as Void's `anon`/`voidlinux` —
   no custom user-creation logic.
@@ -97,9 +97,7 @@ vendor/chimera-install-scripts/ vendored fork of chimera-linux/
 pkg/h77-dots/                  general app dotfiles (/etc/skel): foot,
                                alacritty, qt6ct, Kvantum, gtk-2.0/3.0/4.0,
                                fuzzel + fuzzel-power-menu, the wallpaper,
-                               50-udisks.rules, motd (+ a separate,
-                               credential-free motd-installed the installer
-                               swaps in after a real disk install),
+                               50-udisks.rules,
                                h77-update (updates h77-* on an installed
                                system from the h77-pkgs GitHub Release)
 pkg/h77-sway-dots/             sway/swaylock/swaync/waybar dotfiles
@@ -234,7 +232,7 @@ the destructive disk-partitioning path: live boot → `doas h77-installer`
 non-interactive format/mount pass, mirroring void-installer's own
 `menu_filesystems`/`create_filesystems` split) → SystemRoot → Kernel →
 Packages → Bootloader → Install, groups/services checklists applied,
-installed-system motd swapped in, reboot into a working Sway/Waybar
+reboot into a working Sway/Waybar
 desktop -- that's the sway variant. The niri variant (2026-09-25) is
 newer: all its packages build and install cleanly, its niri config
 passes `niri validate` on the real niri 26.04, and its ISO builds

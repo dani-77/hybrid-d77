@@ -217,6 +217,11 @@ msg "Installing target packages..."
 run_apk "${ROOT_DIR}" add ${PACKAGES} ${TARGET_PACKAGES} \
     || die "failed to install full rootfs"
 
+# hybrid-d77: the live hostname otherwise comes from Chimera's own
+# packages as "chimera"; the installed system gets the same name via
+# h77-installer's installer.conf (INSTALL_CONFIG_HOSTNAME).
+echo hybrid-d77 > "${ROOT_DIR}/etc/hostname" || die "failed to set hostname"
+
 # determine kernel version
 if [ -z "$KERNVER" ]; then
     for f in "${ROOT_DIR}/boot/"vmlinu[xz]-*; do
@@ -360,7 +365,7 @@ msg "Generating ISO image..."
 
 generate_menu() {
     sed \
-     -e "s|@@BOOT_TITLE@@|Chimera Linux|g" \
+     -e "s|@@BOOT_TITLE@@|hybrid-d77|g" \
      -e "s|@@KERNFILE@@|${KERNFILE}|g" \
      -e "s|@@KERNVER@@|${KERNVER}|g" \
      -e "s|@@ARCH@@|${APK_ARCH}|g" \
@@ -372,7 +377,7 @@ generate_menu() {
 generate_iso_grub() {
     # because host grub would not have all the targets
     chroot "${HOST_DIR}" /usr/bin/grub-mkrescue -o /mnt/image.iso \
-        --product-name "Chimera Linux" \
+        --product-name "hybrid-d77" \
         --product-version "${ISO_VERSION}" \
         --mbr-force-bootable \
         /mnt/image \
