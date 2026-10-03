@@ -1,0 +1,6 @@
+# hybrid-d77: Chimera's base-files tmpfiles.conf carries
+# "L+ /etc/os-release - - - - ../usr/lib/os-release", re-applied on every
+# boot. For duplicate paths sd-tmpfiles applies the entry from the
+# lexicographically earliest file name, so this 00- file wins over
+# base-files.conf.
+L+ /etc/os-release - - - - ../usr/lib/hybrid-d77-os-release
