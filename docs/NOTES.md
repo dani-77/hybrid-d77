@@ -1429,3 +1429,35 @@ Fixed in h77-niri-dots: autostart via `qsd77 run -c utumno`, and the
 five OSD keybinds (same bug, not yet noticed on the boot) via
 `qsd77 ipc call osd <action> -c utumno`. Everything else already went
 through qsd77 or called Utumno's script by full path.
+
+## 2026-10-03 :: hybrid-d77 system identity
+
+Both Sway and niri now expose `hybrid-d77` through the standard
+`/etc/os-release` interface. The common `h77-dots` package carries
+`/usr/lib/hybrid-d77-os-release` and the project's existing 512px logo
+as the hicolor icon `hybrid-d77.png`; its package revision is now r2.
+The identity keeps `ID_LIKE=chimera`, uses
+`https://hybrid-d77.sourceforge.io`, and says `hybrid-d77 Linux`
+rather than GNU/Linux because Chimera provides a BSD userland.
+
+Chimera's base package continues to own `/usr/lib/os-release` unchanged.
+After `apk` installs the complete live rootfs, `mklive.sh` repoints the
+standard `/etc/os-release` symlink to the file owned by `h77-dots`.
+This is later preserved by the installer's default local-source tar copy,
+so the installed system gets the same identity without a second special
+case. `h77-dots` is in `H77_COMMON_PKGS`, so the logic applies equally to
+the Sway and niri images.
+
+Validation: `h77-dots-0.1.0-r2` completed a real cbuild package build,
+including its lint hooks. That first all-package run exposed a Qt 6.12
+failure in the Hyprland module of `quickshell-h77` 0.3.1. Chimera's
+official package also uses Qt 6.12, but builds with `HYPRLAND=OFF`; our
+package deliberately enables it because Utumno needs the module.
+
+Fixed by backporting Quickshell upstream commit `5d5d498` (upstream's
+own Qt 6.12 MOC fix) as `pkg/quickshell-h77/patches/
+qt-6.12-moc-includes.patch` and raising that package to r1. A complete
+second cbuild run then succeeded: all 8 Quickshell tests passed and all
+nine project templates produced a signed, indexed repository. The new
+key alone verifies the index and all 13 main/doc APK files. No ISO was
+built in this validation.

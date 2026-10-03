@@ -217,6 +217,17 @@ msg "Installing target packages..."
 run_apk "${ROOT_DIR}" add ${PACKAGES} ${TARGET_PACKAGES} \
     || die "failed to install full rootfs"
 
+# hybrid-d77: h77-dots carries our os-release alongside Chimera's
+# package-owned /usr/lib/os-release. /etc/os-release has precedence by
+# specification, so repoint its normal relative symlink without
+# overwriting the base package's fallback file. The local installer
+# copies this live rootfs, preserving the same identity on disk.
+if [ -f "${ROOT_DIR}/usr/lib/hybrid-d77-os-release" ]; then
+    rm -f "${ROOT_DIR}/etc/os-release" || die "failed to remove base os-release link"
+    ln -s ../usr/lib/hybrid-d77-os-release "${ROOT_DIR}/etc/os-release" \
+        || die "failed to activate hybrid-d77 os-release"
+fi
+
 # hybrid-d77: the live hostname otherwise comes from Chimera's own
 # packages as "chimera"; the installed system gets the same name via
 # h77-installer's installer.conf (INSTALL_CONFIG_HOSTNAME).

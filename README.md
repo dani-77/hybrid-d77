@@ -14,6 +14,12 @@ Two ISOs from the same tree, same base (Chimera, dinit, no greeter,
 `h77-installer`, `h77-welcome`, `h77-update`, the same app set) --
 only the session differs:
 
+Both the live system and the installation identify themselves through
+`/etc/os-release` as **hybrid-d77**, with Chimera retained in `ID_LIKE`
+for base compatibility. The matching project logo is installed as the
+`hybrid-d77` desktop icon and the project URL is
+<https://hybrid-d77.sourceforge.io>.
+
 | | `sway` (default) | `niri` |
 |---|---|---|
 | Compositor | Sway | niri (scrollable tiling) |

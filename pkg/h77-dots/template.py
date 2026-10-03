@@ -152,10 +152,19 @@
 # chimera-live's own /etc/issue (vendor/chimera-live/data/issue.in,
 # which now also points at `doas h77-installer`), so the live motd
 # only repeated it; the installed-system one went with it.
+#
+# 2026-10-03: files/hybrid-d77-os-release adds the public system
+# identity shared by both variants. It deliberately lives alongside,
+# rather than replacing, Chimera's package-owned /usr/lib/os-release;
+# mklive.sh points /etc/os-release at this file after apk has finished
+# installing the rootfs. That keeps the base package intact while the
+# standard /etc override makes desktop tools report hybrid-d77. The
+# matching XDG icon is installed from the same 512px logo already used
+# by fastfetch.
 
 pkgname = "h77-dots"
 pkgver = "0.1.0"
-pkgrel = 1
+pkgrel = 2
 build_style = "meta"
 pkgdesc = "General app dotfiles for hybrid-d77"
 license = "custom:meta"
@@ -204,6 +213,12 @@ def install(self):
     # /etc/environment is read by PAM's pam_env at login, system-wide,
     # standard Linux convention (not sway/labwc-specific).
     self.install_file(self.files_path / "environment", "etc")
+    self.install_file(self.files_path / "hybrid-d77-os-release", "usr/lib")
+    self.install_file(
+        self.template_path / "skel/.config/fastfetch/logo.png",
+        "usr/share/icons/hicolor/512x512/apps",
+        name="hybrid-d77.png",
+    )
     self.install_bin(self.files_path / "fuzzel-power-menu")
     # h77-update: pulls the latest h77-* packages from this project's
     # own GitHub Release (h77-pkgs) and apk upgrades against them on an
