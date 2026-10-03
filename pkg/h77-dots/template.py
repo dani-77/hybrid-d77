@@ -161,10 +161,19 @@
 # standard /etc override makes desktop tools report hybrid-d77. The
 # matching XDG icon is installed from the same 512px logo already used
 # by fastfetch.
+#
+# 2026-10-03 (r3): the mklive.sh symlink alone did not stick. base-files
+# also ships "L+ /etc/os-release ... ../usr/lib/os-release" in its
+# tmpfiles.conf, and dinit-chimera runs sd-tmpfiles --create at every
+# boot, so both the live system and the installed one went back to
+# Chimera's identity on boot. files/os-release.tmpfiles is installed as
+# 00-hybrid-d77.conf: for a path claimed by several tmpfiles.d files,
+# the earliest file name wins, so ours takes precedence over
+# base-files.conf without touching that package.
 
 pkgname = "h77-dots"
 pkgver = "0.1.0"
-pkgrel = 2
+pkgrel = 3
 build_style = "meta"
 pkgdesc = "General app dotfiles for hybrid-d77"
 license = "custom:meta"
@@ -214,6 +223,9 @@ def install(self):
     # standard Linux convention (not sway/labwc-specific).
     self.install_file(self.files_path / "environment", "etc")
     self.install_file(self.files_path / "hybrid-d77-os-release", "usr/lib")
+    self.install_tmpfiles(
+        self.files_path / "os-release.tmpfiles", name="00-hybrid-d77"
+    )
     self.install_file(
         self.template_path / "skel/.config/fastfetch/logo.png",
         "usr/share/icons/hicolor/512x512/apps",

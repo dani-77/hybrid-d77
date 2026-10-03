@@ -1461,3 +1461,20 @@ second cbuild run then succeeded: all 8 Quickshell tests passed and all
 nine project templates produced a signed, indexed repository. The new
 key alone verifies the index and all 13 main/doc APK files. No ISO was
 built in this validation.
+
+### Correction: the symlink alone did not survive boot
+
+Review found that Chimera's `base-files` also declares
+`L+ /etc/os-release - - - - ../usr/lib/os-release` in its tmpfiles.conf,
+and dinit-chimera runs `sd-tmpfiles --create` on every boot. The `L+`
+replaces whatever is there, so the symlink made by `mklive.sh` (and
+copied by the installer) was reset to Chimera's identity at the first
+boot of both the live and the installed system.
+
+`h77-dots` r3 adds `/usr/lib/tmpfiles.d/00-hybrid-d77.conf` with the same
+`L+` line pointing at `../usr/lib/hybrid-d77-os-release`. When several
+tmpfiles.d files claim one path, the file whose name sorts first wins,
+so `00-hybrid-d77.conf` takes precedence over `base-files.conf` without
+modifying the base package. The `mklive.sh` step stays, so the image is
+already correct before tmpfiles first runs. Not yet validated with a
+cbuild run or a booted ISO.
