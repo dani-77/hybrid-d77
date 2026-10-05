@@ -199,8 +199,9 @@ doas ./iso/mklive-d77.sh niri   # niri variant
 ### From any host (rootful container)
 
 ```
-./build.sh          # both containers, in order -> iso/hybrid-d77-live-*-sway.iso
-./build.sh niri     # same, niri variant    -> iso/hybrid-d77-live-*-niri.iso
+./build.sh          # packages once, then BOTH ISOs (same as ./build.sh all)
+./build.sh sway     # packages + sway ISO only -> iso/hybrid-d77-live-*-sway.iso
+./build.sh niri     # packages + niri ISO only -> iso/hybrid-d77-live-*-niri.iso
 ```
 
 Needs docker or `sudo podman` (rootless podman won't do the `mount(8)`

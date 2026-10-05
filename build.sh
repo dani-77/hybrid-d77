@@ -2,7 +2,11 @@
 # hybrid-d77 :: ONE command, whole pipeline. Runs both containers in
 # the right order and produces a ready-to-write ISO under iso/.
 #
-#   ./build.sh [sway|niri]      (default: sway)
+#   ./build.sh [all|sway|niri]  (default: all)
+#
+# "all" builds the packages ONCE, then both ISOs back to back -- the
+# packages are identical for both variants, so there's no point in
+# building them twice.
 #
 # Why two separate containers (unlike e.g. d77devuan's own single
 # container/build.sh): cbuild REFUSES to run as root ("Please don't
@@ -18,10 +22,10 @@ set -eu
 
 cd "$(dirname "$0")"
 
-VARIANT="${1:-sway}"
-case "$VARIANT" in
-	sway|niri) ;;
-	*) echo "usage: $0 [sway|niri]" >&2; exit 1 ;;
+case "${1:-all}" in
+	all) VARIANTS="sway niri" ;;
+	sway|niri) VARIANTS="$1" ;;
+	*) echo "usage: $0 [all|sway|niri]" >&2; exit 1 ;;
 esac
 
 if [ -n "${ENGINE:-}" ]; then :
@@ -37,6 +41,11 @@ echo ">> engine: $ENGINE"
 
 echo ""
 echo "== 1/2: building the h77-* packages (+ utumno, qsd77) =="
+# install_files() copies each pkg/*/skel tree as-is, so a stray
+# __pycache__ (e.g. from running waybar's mediaplayer.py locally) ends
+# up in the package and cbuild aborts with "leftover unsplit pycache".
+# It's gitignored, so CI never sees it -- only local builds break.
+find pkg -path '*/skel/*' -name __pycache__ -type d -prune -exec rm -rf {} +
 $ENGINE build -t hybrid-d77-cbuild -f container/cbuild.Containerfile .
 mkdir -p cbuild-out
 # The container's own "builder" user is a fixed uid 1000 -- pre-own
@@ -51,27 +60,29 @@ $ENGINE run --rm --privileged --security-opt label=disable \
 # necessarily that uid.
 [ "$(id -u)" = 0 ] || sudo chown -R "$(id -u):$(id -g)" cbuild-out 2> /dev/null || true
 
-echo ""
-echo "== 2/2: building the $VARIANT ISO =="
-# A previous ISO build's leftover build/ dir is owned by root (the ISO
-# container runs rootful) -- a plain rm here fails with "Permissão
-# recusada" the very next time this runs as a normal user. Confirmed
-# the hard way.
-[ "$(id -u)" = 0 ] && rm -rf vendor/chimera-live/build || sudo rm -rf vendor/chimera-live/build
-$ENGINE build -t hybrid-d77-build -f container/Containerfile .
-$ENGINE run --rm --privileged --security-opt label=disable \
-	-e VARIANT="$VARIANT" \
-	-v "$PWD:/src" -w /src \
-	hybrid-d77-build
+for VARIANT in $VARIANTS; do
+	echo ""
+	echo "== 2/2: building the $VARIANT ISO =="
+	# A previous ISO build's leftover build/ dir is owned by root (the ISO
+	# container runs rootful) -- a plain rm here fails with "Permissão
+	# recusada" the very next time this runs as a normal user. Confirmed
+	# the hard way.
+	[ "$(id -u)" = 0 ] && rm -rf vendor/chimera-live/build || sudo rm -rf vendor/chimera-live/build
+	$ENGINE build -t hybrid-d77-build -f container/Containerfile .
+	$ENGINE run --rm --privileged --security-opt label=disable \
+		-e VARIANT="$VARIANT" \
+		-v "$PWD:/src" -w /src \
+		hybrid-d77-build
 
-iso=$(ls -t iso/hybrid-d77-live-*-"$VARIANT".iso 2> /dev/null | head -1)
-[ -n "$iso" ] || { echo "!! no ISO produced" >&2; exit 1; }
-[ "$(id -u)" = 0 ] || sudo chown "$(id -u):$(id -g)" "$iso" "$iso.sha256" 2> /dev/null || true
+	iso=$(ls -t iso/hybrid-d77-live-*-"$VARIANT".iso 2> /dev/null | head -1)
+	[ -n "$iso" ] || { echo "!! no ISO produced" >&2; exit 1; }
+	[ "$(id -u)" = 0 ] || sudo chown "$(id -u):$(id -g)" "$iso" "$iso.sha256" 2> /dev/null || true
 
-echo ""
-echo ">> done: $iso"
-# The checksum file, written by container/entrypoint.sh itself, holds
-# only the bare filename (it's generated with `cd iso && sha256sum
-# "$f" > "$f.sha256"`) -- sha256sum -c needs to run from that same
-# directory to resolve it, not the repo root. Confirmed the hard way.
-( cd iso && sha256sum -c "$(basename "$iso").sha256" )
+	echo ""
+	echo ">> done: $iso"
+	# The checksum file, written by container/entrypoint.sh itself, holds
+	# only the bare filename (it's generated with `cd iso && sha256sum
+	# "$f" > "$f.sha256"`) -- sha256sum -c needs to run from that same
+	# directory to resolve it, not the repo root. Confirmed the hard way.
+	( cd iso && sha256sum -c "$(basename "$iso").sha256" )
+done
