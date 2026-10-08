@@ -143,6 +143,13 @@ pkg/h77-installer/             thin wrapper around h77-install-scripts' own
 pkg/h77-install-scripts/       cports package for the patched
                                chimera-installer above (see vendor/
                                chimera-install-scripts/ entry)
+pkg/mocinha/                   cports package for the Mocinha installer
+                               (github.com/dani-77/mocinha; GTK3 wizard,
+                               experimental, work in progress), built from
+                               its release tags -- a second install method
+                               next to h77-installer
+pkg/h77-mocinha/               Mocinha's manifest for this live
+                               (/etc/mocinha.toml)
 .github/workflows/
   build-h77-pkgs.yml            builds every pkg/* via cbuild in CI and
                                publishes them as .apk files on a GitHub
