@@ -18,7 +18,7 @@ CPORTS=/home/builder/cports
 # whether cbuild resolves in-category build order on its own, so this
 # doesn't rely on it. utumno + qsd77 before h77-niri-dots for the same
 # reason (it depends on both).
-H77_PKGS="h77-dots h77-welcome h77-sway-dots quickshell-h77 utumno qsd77 h77-niri-dots h77-installer h77-install-scripts"
+H77_PKGS="h77-dots h77-welcome h77-sway-dots quickshell-h77 utumno qsd77 h77-niri-dots h77-installer h77-install-scripts mocinha h77-mocinha"
 
 if [ ! -d "$CPORTS/.git" ]; then
 	echo ">> shallow-cloning chimera-linux/cports (this is a real, fairly"
@@ -90,6 +90,17 @@ if [ ! -d bldroot ]; then
 	./cbuild bootstrap
 fi
 
+# Sources that cannot be downloaded (Mocinha's repository is private): build.sh
+# puts them in cbuild-out/sources/; seed cbuild's own content-addressed cache
+# (sources/by_sha256/<sha256>_<file>), which it checks before fetching.
+if ls /src/cbuild-out/sources/*.tar.gz >/dev/null 2>&1; then
+	mkdir -p sources/by_sha256
+	for f in /src/cbuild-out/sources/*.tar.gz; do
+		sha=$(sha256sum "$f" | cut -d' ' -f1)
+		cp "$f" "sources/by_sha256/${sha}_$(basename "$f")"
+		echo ">> seeded source $(basename "$f") ($sha)"
+	done
+fi
 for p in $H77_PKGS; do
 	echo ">> building hybrid/$p"
 	./cbuild pkg "hybrid/$p"
