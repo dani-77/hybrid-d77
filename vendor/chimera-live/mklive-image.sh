@@ -241,9 +241,12 @@ h77-sway-dots"
         # lock screen (qsd77 locker) -- no swaylock needed, Utumno locks
         # natively via ext-session-lock + PAM (linux-pam's setuid
         # unix_chkpwd, part of base).
+        # upower: Utumno's battery module reads UPower.displayDevice
+        # (Quickshell.Services.UPower); without upowerd (D-Bus activated,
+        # no dinit service) the bar shows no battery.
         PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
 niri xwayland-satellite swaybg swaync swayidle xdg-desktop-portal-gnome \
-quickshell-h77 utumno qsd77 \
+quickshell-h77 utumno qsd77 upower \
 h77-niri-dots"
         ;;
     *)
