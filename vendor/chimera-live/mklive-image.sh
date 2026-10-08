@@ -56,7 +56,8 @@ neovim yt-dlp zathura zathura-pdf-poppler gnome-calculator \
 git clang gmake tree-sitter-cli \
 chimera-repo-user \
 dialog \
-h77-dots h77-installer h77-install-scripts h77-welcome"
+h77-dots h77-installer h77-install-scripts h77-welcome \
+mocinha h77-mocinha"
 
 case "$IMAGE" in
     minimal)

@@ -202,7 +202,7 @@ environment {
 // Same session services the sway variant starts from its own config.
 spawn-at-startup "pipewire"
 spawn-at-startup "udiskie" "-a"
-spawn-at-startup "/usr/libexec/polkit-mate-authentication-agent-1"
+spawn-at-startup "/usr/lib/polkit-mate-authentication-agent-1"
 spawn-sh-at-startup "xdg-user-dirs-update; xdg-user-dirs-gtk-update"
 spawn-at-startup "brightnessctl" "set" "50%"
 // Notifications (Utumno has no notification server of its own).
