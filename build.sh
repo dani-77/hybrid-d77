@@ -46,17 +46,6 @@ echo "== 1/2: building the h77-* packages (+ utumno, qsd77) =="
 # up in the package and cbuild aborts with "leftover unsplit pycache".
 # It's gitignored, so CI never sees it -- only local builds break.
 find pkg -path '*/skel/*' -name __pycache__ -type d -prune -exec rm -rf {} +
-# Mocinha (pkg/mocinha, branch mocinha): its repository is private, so its
-# source archive is made here from a local checkout (committed HEAD) and the
-# cbuild container seeds its source cache with it; pkg/mocinha/template.py is
-# regenerated to match (version, commit, sha256).
-MOCINHA_SRC=${MOCINHA_SRC:-$HOME/Projectos/mocinha}
-if [ -d pkg/mocinha ]; then
-	[ -x "$MOCINHA_SRC/packaging/chimera/make-source.sh" ] || { echo "Mocinha checkout not found: $MOCINHA_SRC (set MOCINHA_SRC)" >&2; exit 1; }
-	rm -rf cbuild-out/sources && mkdir -p cbuild-out/sources
-	"$MOCINHA_SRC/packaging/chimera/make-source.sh" "$PWD/cbuild-out/sources"
-	mv cbuild-out/sources/template.py pkg/mocinha/template.py
-fi
 $ENGINE build -t hybrid-d77-cbuild -f container/cbuild.Containerfile .
 mkdir -p cbuild-out
 # The container's own "builder" user is a fixed uid 1000 -- pre-own

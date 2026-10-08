@@ -90,17 +90,6 @@ if [ ! -d bldroot ]; then
 	./cbuild bootstrap
 fi
 
-# Sources that cannot be downloaded (Mocinha's repository is private): build.sh
-# puts them in cbuild-out/sources/; seed cbuild's own content-addressed cache
-# (sources/by_sha256/<sha256>_<file>), which it checks before fetching.
-if ls /src/cbuild-out/sources/*.tar.gz >/dev/null 2>&1; then
-	mkdir -p sources/by_sha256
-	for f in /src/cbuild-out/sources/*.tar.gz; do
-		sha=$(sha256sum "$f" | cut -d' ' -f1)
-		cp "$f" "sources/by_sha256/${sha}_$(basename "$f")"
-		echo ">> seeded source $(basename "$f") ($sha)"
-	done
-fi
 for p in $H77_PKGS; do
 	echo ">> building hybrid/$p"
 	./cbuild pkg "hybrid/$p"
