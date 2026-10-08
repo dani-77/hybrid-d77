@@ -6,14 +6,14 @@
 # the archive make-source.sh writes. Shipped on a live and removed from the
 # installed system by Mocinha itself ([live_only].packages).
 pkgname = "mocinha"
-pkgver = "0.1.0.40"
+pkgver = "0.1.0.41"
 pkgrel = 0
 pkgdesc = "Small, modular, platform-aware live-system installer"
 license = "custom:none"  # no license file yet (private repository)
 url = "https://github.com/dani-77/mocinha"
-# commit 3c014d7
-source = f"{url}/archive/3c014d7.tar.gz>mocinha-{pkgver}.tar.gz"
-sha256 = "4245ca8d3e9d79854fbfbbbad0623bc701bd9717ce4842e250cb92484c1303bc"
+# commit a939633
+source = f"{url}/archive/a939633.tar.gz>mocinha-{pkgver}.tar.gz"
+sha256 = "54708f3332ccd89eacd23df3ab501e9e911a90f3bd88fa68bcdf675e944b4d54"
 
 
 def install(self):
