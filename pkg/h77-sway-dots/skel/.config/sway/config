@@ -91,7 +91,7 @@ exec wlsunset -g 0.8 -l 41.6 -L -8.62 &
 exec udiskie -a &
 
 ### Polkit authentication agent
-exec /usr/libexec/polkit-mate-authentication-agent-1 &
+exec /usr/lib/polkit-mate-authentication-agent-1 &
 
 ### Start SwayNotificationCenter
 exec swaync &
