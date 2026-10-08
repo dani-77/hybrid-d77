@@ -6,16 +6,14 @@
 # the archive make-source.sh writes. Shipped on a live and removed from the
 # installed system by Mocinha itself ([live_only].packages).
 pkgname = "mocinha"
-pkgver = "0.1.0.35"
+pkgver = "0.1.0.40"
 pkgrel = 0
-build_style = "meta"
-pkgdesc = "Small, modular, platform-aware live-system installer (GTK3 + CLI)"
+pkgdesc = "Small, modular, platform-aware live-system installer"
 license = "custom:none"  # no license file yet (private repository)
 url = "https://github.com/dani-77/mocinha"
-# commit e8005f8
-source = f"{url}/archive/e8005f8.tar.gz>mocinha-{pkgver}.tar.gz"
-sha256 = "76b466694293c3ed45ca090d4231ebfcf89f7bd43eb5f739fc860c02a413e728"
-options = ["!check"]
+# commit 3c014d7
+source = f"{url}/archive/3c014d7.tar.gz>mocinha-{pkgver}.tar.gz"
+sha256 = "4245ca8d3e9d79854fbfbbbad0623bc701bd9717ce4842e250cb92484c1303bc"
 
 
 def install(self):
@@ -24,5 +22,5 @@ def install(self):
     self.install_bin("packaging/common/mocinha.sh", name="mocinha")
     self.install_file("packaging/common/mocinha-root", "usr/lib/mocinha", mode=0o755)
     self.install_file("packaging/common/mocinha.desktop", "usr/share/applications")
-    self.install_file("assets/logo.png", "usr/share/pixmaps", name="mocinha.png")
+    self.install_file("assets/mocinha-icon-256.png", "usr/share/icons/hicolor/256x256/apps", name="mocinha.png")
     self.install_file("packaging/common/org.mocinha.installer.policy", "usr/share/polkit-1/actions")
