@@ -4,14 +4,14 @@
 # Shipped on a live and removed from the installed system by Mocinha itself
 # ([live_only].packages).
 pkgname = "mocinha"
-pkgver = "0.1.1"
+pkgver = "0.1.5"
 pkgrel = 0
 pkgdesc = "Small, modular, platform-aware live-system installer"
 license = "MIT"
 url = "https://github.com/dani-77/mocinha"
-# commit 4f07587d778ed8b2f596033e30ad78b5281efa68
-source = f"{url}/archive/refs/tags/0.1.1.tar.gz>mocinha-{pkgver}.tar.gz"
-sha256 = "c4eca8b5a87f704416f7899a752f97d0dcb1dc0b77aed7786853f2250dafc111"
+# commit b071bbcd88381089cb86f41ed005b781205f331b
+source = f"{url}/archive/refs/tags/0.1.5.tar.gz>mocinha-{pkgver}.tar.gz"
+sha256 = "08579972aa4a9f63ceb6edf402e94906aa2ad76fbcffacbad85752269b5f9046"
 
 
 def install(self):
