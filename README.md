@@ -211,6 +211,13 @@ doas ./iso/mklive-d77.sh niri   # niri variant
 ./build.sh niri     # packages + niri ISO only -> iso/hybrid-d77-live-*-niri.iso
 ```
 
+The packages are only built locally when they have to be: if the
+`h77-pkgs` release CI published was built from a commit whose `pkg/`
+and cbuild container match this working tree exactly, `build.sh`
+downloads it (`iso/fetch-pkgs.sh`) instead; any local change, or a
+commit CI hasn't built yet, builds locally. `PKGS=fetch` or
+`PKGS=local` forces one or the other.
+
 Needs docker or `sudo podman` (rootless podman won't do the `mount(8)`
 work the ISO half needs). Each step can also be run by hand instead,
 same containers, same images:
