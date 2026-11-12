@@ -46,15 +46,14 @@
 # (wswap-way) bindings, plus d77run's for_window rule, from sway/config and
 # README.md -- none of those programs is in the image (confirmed against the
 # 2026-10-24 sway ISO's rootfs), so the keys did nothing.
-
 pkgname = "h77-sway-dots"
 pkgver = "0.1.0"
 pkgrel = 1
 build_style = "meta"
+depends = ["h77-dots", "h77-welcome"]
 pkgdesc = "Sway session dotfiles for hybrid-d77"
 license = "custom:meta"
 url = "https://github.com/dani-77/hybrid-d77"
-depends = ["h77-dots", "h77-welcome"]
 # Same reasoning as h77-dots: we genuinely install straight into
 # /etc/skel, cbuild's lint needs that acknowledged explicitly.
 options = ["etcfiles"]

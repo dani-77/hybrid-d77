@@ -8,7 +8,6 @@
 # system ([live_only].packages), so neither persists there.
 #
 # Experimental third install method (branch mocinha), next to h77-installer.
-
 pkgname = "h77-mocinha"
 pkgver = "0.1.0"
 pkgrel = 0

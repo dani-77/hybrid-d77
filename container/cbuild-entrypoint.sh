@@ -20,10 +20,20 @@ CPORTS=/home/builder/cports
 # reason (it depends on both).
 H77_PKGS="h77-dots h77-welcome h77-sway-dots quickshell-h77 utumno qsd77 h77-niri-dots h77-installer h77-install-scripts mocinha h77-mocinha"
 
+# cports pinned to the commit right before d11913dbc ("cbuild: forbid
+# /etc/skel in lint", 2026-11-12): that lint fails every package that
+# installs into /etc/skel, which h77-dots, h77-sway-dots and
+# h77-niri-dots all do, with no option to opt out. Pinned until those
+# packages move their files out of /etc/skel. CPORTS_REF=master (or any
+# other commit) overrides it.
+CPORTS_REF="${CPORTS_REF:-9dc6e65a7c4ce3efca4150351eb3d752f6aac72f}"
+
 if [ ! -d "$CPORTS/.git" ]; then
-	echo ">> shallow-cloning chimera-linux/cports (this is a real, fairly"
-	echo "   large checkout -- source templates for the whole distro)"
-	git clone --depth 1 https://github.com/chimera-linux/cports "$CPORTS"
+	echo ">> shallow-fetching chimera-linux/cports at $CPORTS_REF (this is a"
+	echo "   real, fairly large checkout -- source templates for the whole distro)"
+	git init -q "$CPORTS"
+	git -C "$CPORTS" fetch -q --depth 1 https://github.com/chimera-linux/cports "$CPORTS_REF"
+	git -C "$CPORTS" checkout -q FETCH_HEAD
 fi
 
 echo ">> syncing pkg/{$H77_PKGS} into cports as 'hybrid/'"

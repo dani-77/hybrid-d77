@@ -31,7 +31,6 @@
 # docs/NOTES.md for what's still open (SystemRoot/disk layout stays
 # interactive on purpose, network-source installs need someone to fill
 # in Packages by hand for now, nothing automates that yet).
-
 pkgname = "h77-installer"
 pkgver = "0.1.0"
 pkgrel = 0

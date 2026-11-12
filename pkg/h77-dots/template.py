@@ -146,7 +146,7 @@
 # 2026-09-25: logo.png itself replaced with the project's own
 # assets/logo.png (downscaled 1254 -> 512px) -- the synced one was still
 # d77void's monochrome "D77" mark, not hybrid-d77's.
-
+#
 # 2026-09-28: files/motd and files/motd-installed dropped, user's own
 # call. The live credentials are already shown before login by
 # chimera-live's own /etc/issue (vendor/chimera-live/data/issue.in,
@@ -170,7 +170,6 @@
 # 00-hybrid-d77.conf: for a path claimed by several tmpfiles.d files,
 # the earliest file name wins, so ours takes precedence over
 # base-files.conf without touching that package.
-
 pkgname = "h77-dots"
 pkgver = "0.1.0"
 pkgrel = 3

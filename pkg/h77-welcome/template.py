@@ -35,7 +35,6 @@
 # outright (mirroring d77void's own trick of deleting ~/.auto.sh) --
 # also lives in h77-sway-dots for the same reason: see that package's
 # skel/.config/sway/{config,autostart.d/h77-welcome.conf}.
-
 pkgname = "h77-welcome"
 pkgver = "0.1.0"
 pkgrel = 0
