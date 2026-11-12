@@ -42,10 +42,14 @@
 # in-category dependency pattern as h77-dots above (cbuild resolves
 # depends= fine within our own "hybrid" category; only cross-category
 # `main`/`user` deps hit the resolution limitation noted there).
+# 2026-11-12: dropped the Super+N (nwggrid), Super+O (d77run) and Super+Y
+# (wswap-way) bindings, plus d77run's for_window rule, from sway/config and
+# README.md -- none of those programs is in the image (confirmed against the
+# 2026-10-24 sway ISO's rootfs), so the keys did nothing.
 
 pkgname = "h77-sway-dots"
 pkgver = "0.1.0"
-pkgrel = 0
+pkgrel = 1
 build_style = "meta"
 pkgdesc = "Sway session dotfiles for hybrid-d77"
 license = "custom:meta"

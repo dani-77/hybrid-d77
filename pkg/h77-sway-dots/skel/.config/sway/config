@@ -62,7 +62,6 @@ smart_borders on
 for_window [class="^.*"] border pixel 5
 
 ## Windows Rules
-for_window [app_id="d77run"] floating enable
 for_window [app_id="h77-welcome"] floating enable
 for_window [window_type="dialog"] floating enable
 for_window [window_role="dialog"] floating enable
@@ -164,17 +163,8 @@ exec swayidle -w \
     # Start your launcher
     bindsym $mod+d exec $menu
 
-    # Start nwggrid
-    bindsym $mod+n exec nwggrid
-
     # Start fuzzel
     bindsym $mod+p exec fuzzel
-
-    # Swap Wallpaper
-    bindsym $mod+y exec wswap-way
-
-    # Start D77run
-    bindsym $mod+o exec d77run
 
     # Lock screen
     bindsym $mod+t exec swaylock

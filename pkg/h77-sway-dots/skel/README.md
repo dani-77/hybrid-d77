@@ -17,15 +17,9 @@ super + d -> wmenu
 
 super + p -> fuzzel
 
-super + n -> nwggrid
-
-super + o -> d77run
-
 super + t -> lock screen
 
 super + x -> powermenu
-
-super + y -> swap wallpaper
 
 super + g / Print -> screenshot (grim)
 
