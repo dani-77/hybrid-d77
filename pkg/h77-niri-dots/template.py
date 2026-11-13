@@ -17,21 +17,22 @@
 # Utumno's own lock screen (`qsd77 locker -c utumno`), same timings as
 # the sway variant's swayidle+swaylock.
 #
-# Ships its own /etc/skel/.profile and README.md, same paths as
+# Ships its own skel .profile and README.md, same paths as
 # h77-sway-dots -- the two are alternative sessions, one per ISO, never
 # meant to be installed together.
+# 2026-11-13: the skel tree now goes to /usr/share/hybrid-d77/skel, not
+# /etc/skel: cports d11913dbc ("cbuild: forbid /etc/skel in lint")
+# reserves /etc/skel for the machine admin. mklive.sh copies it into the
+# image's /etc/skel, which the live user and both installers start from.
 pkgname = "h77-niri-dots"
 pkgver = "0.1.0"
-pkgrel = 0
+pkgrel = 1
 build_style = "meta"
 depends = ["h77-dots", "h77-welcome", "qsd77", "utumno"]
 pkgdesc = "Niri session dotfiles for hybrid-d77"
 license = "custom:meta"
 url = "https://github.com/dani-77/hybrid-d77"
-# Same reasoning as h77-dots: we genuinely install straight into
-# /etc/skel, cbuild's lint needs that acknowledged explicitly.
-options = ["etcfiles"]
 
 
 def install(self):
-    self.install_files(self.template_path / "skel", "etc")
+    self.install_files(self.template_path / "skel", "usr/share/hybrid-d77")

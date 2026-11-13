@@ -247,7 +247,7 @@ h77-sway-dots"
         # no dinit service) the bar shows no battery.
         PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
 niri xwayland-satellite swaybg swaync swayidle xdg-desktop-portal-gnome \
-quickshell-h77 utumno qsd77 upower \
+quickshell-h77 matugen utumno qsd77 upower \
 h77-niri-dots"
         ;;
     *)

@@ -30,7 +30,7 @@ TAG="${1:-h77-pkgs}"
 # Every package this project builds; only the ones actually installed
 # get upgraded (below) -- a sway install must never pull in the niri
 # variant's packages, or vice versa.
-ALL_PKGS="h77-dots h77-sway-dots h77-niri-dots quickshell-h77 utumno qsd77 h77-installer h77-install-scripts h77-welcome"
+ALL_PKGS="h77-dots h77-sway-dots h77-niri-dots quickshell-h77 matugen utumno qsd77 h77-installer h77-install-scripts h77-welcome"
 
 [ "$(id -u)" -eq 0 ] || { echo "run as root (doas h77-update)" >&2; exit 1; }
 command -v curl > /dev/null || { echo "!! curl is required" >&2; exit 1; }
@@ -80,5 +80,29 @@ done
 echo ">> apk upgrade against the fetched repo..."
 # shellcheck disable=SC2086
 apk upgrade --repository "file://$repodir" $PKGS
+
+# The h77-*-dots packages ship the default home in
+# /usr/share/hybrid-d77/skel (cports forbids packages in /etc/skel), and
+# the ISO copies it into /etc/skel. On installations from older ISOs,
+# /etc/skel still held the packages' own files, so this upgrade removes
+# every one that was never edited (confirmed with apk 3.0.3) and users
+# created afterwards would get an empty home. Copy back only what is
+# missing: files already there, edited or not, are left alone, and on
+# newer installations this changes nothing. Not `cp -an`: chimerautils'
+# cp (FreeBSD's) exits 1 whenever -n skips a file, which set -e would
+# take for a failure.
+if [ -d /usr/share/hybrid-d77/skel ]; then
+	echo ">> restoring missing files in /etc/skel..."
+	(
+		cd /usr/share/hybrid-d77/skel
+		find . ! -type d | while IFS= read -r f; do
+			if [ -e "/etc/skel/$f" ] || [ -h "/etc/skel/$f" ]; then
+				continue
+			fi
+			mkdir -p "/etc/skel/${f%/*}"
+			cp -Pp "$f" "/etc/skel/$f"
+		done
+	)
+fi
 
 echo ">> done"

@@ -233,6 +233,17 @@ fi
 # h77-installer's installer.conf (INSTALL_CONFIG_HOSTNAME).
 echo hybrid-d77 > "${ROOT_DIR}/etc/hostname" || die "failed to set hostname"
 
+# hybrid-d77: the h77-*-dots packages ship the default home in
+# /usr/share/hybrid-d77/skel, because cports reserves /etc/skel for the
+# machine admin (d11913dbc, "cbuild: forbid /etc/skel in lint"). Building
+# the image is that admin step: copy it into the image's /etc/skel, which
+# the live user (useradd -m) and the installers' local copy start from.
+if [ -d "${ROOT_DIR}/usr/share/hybrid-d77/skel" ]; then
+    mkdir -p "${ROOT_DIR}/etc/skel" || die "failed to create /etc/skel"
+    cp -a "${ROOT_DIR}/usr/share/hybrid-d77/skel/." "${ROOT_DIR}/etc/skel/" \
+        || die "failed to copy the hybrid-d77 skel"
+fi
+
 # determine kernel version
 if [ -z "$KERNVER" ]; then
     for f in "${ROOT_DIR}/boot/"vmlinu[xz]-*; do

@@ -100,20 +100,24 @@ vendor/chimera-install-scripts/ vendored fork of chimera-linux/
                                this project's own package set entirely. See
                                that package's own template.py for the full,
                                dated history of every patch.
-pkg/h77-dots/                  general app dotfiles (/etc/skel): foot,
+pkg/h77-dots/                  general app dotfiles (skel): foot,
                                alacritty, qt6ct, Kvantum, gtk-2.0/3.0/4.0,
                                fuzzel + fuzzel-power-menu, the wallpaper,
                                50-udisks.rules,
                                h77-update (updates h77-* on an installed
                                system from the h77-pkgs GitHub Release)
 pkg/h77-sway-dots/             sway/swaylock/swaync/waybar dotfiles
-                               (/etc/skel), depends = ["h77-dots", "h77-welcome"];
+                               (skel), depends = ["h77-dots", "h77-welcome"];
                                also ships skel/README.md (credentials +
                                keybinds, shown by h77-welcome's "About" item)
-pkg/h77-niri-dots/             niri config (/etc/skel) for the niri
+pkg/h77-niri-dots/             niri config (skel) for the niri
                                variant: Utumno autostart, qsd77 keybinds,
                                own .profile + README.md; depends =
                                ["h77-dots", "h77-welcome", "qsd77", "utumno"]
+                               The three *-dots packages install their skel
+                               to /usr/share/hybrid-d77/skel (cports forbids
+                               /etc/skel); mklive.sh copies it into the
+                               image's /etc/skel.
 pkg/utumno/                    Utumno (Quickshell shell), from its own
                                tagged release, to /usr/share/quickshell/utumno
 pkg/quickshell-h77/            cports' own quickshell template with the
@@ -123,6 +127,8 @@ pkg/quickshell-h77/            cports' own quickshell template with the
                                a cports version bump can never swap it out
 pkg/qsd77/                     qsd77 (Go CLI for Utumno's IPC), from its
                                own tagged release
+pkg/matugen/                   matugen (not in cports), which Utumno uses
+                               to theme itself after the wallpaper
 pkg/h77-welcome/               dialog(1) TUI welcome/installer helper,
                                autostarted by h77-sway-dots' sway config
                                (or h77-niri-dots' niri config)

@@ -1,5 +1,5 @@
 # hybrid-d77 :: general app dotfiles (not sway-specific), as a cports
-# package. Installed to /etc/skel like an equivalent Alpine
+# package. Installed as the skel tree like an equivalent Alpine
 # d77-sway-skel, but split apart here per the user's own plan
 # (2026-09-12): app dotfiles
 # with no WM-specific content live here, sway's own config lives in the
@@ -170,9 +170,13 @@
 # 00-hybrid-d77.conf: for a path claimed by several tmpfiles.d files,
 # the earliest file name wins, so ours takes precedence over
 # base-files.conf without touching that package.
+# 2026-11-13: the skel tree now goes to /usr/share/hybrid-d77/skel, not
+# /etc/skel: cports d11913dbc ("cbuild: forbid /etc/skel in lint")
+# reserves /etc/skel for the machine admin. mklive.sh copies it into the
+# image's /etc/skel, which the live user and both installers start from.
 pkgname = "h77-dots"
 pkgver = "0.1.0"
-pkgrel = 3
+pkgrel = 4
 build_style = "meta"
 pkgdesc = "General app dotfiles for hybrid-d77"
 license = "custom:meta"
@@ -186,7 +190,7 @@ url = "https://github.com/dani-77/hybrid-d77"
 # a cbuild quirk/limitation, not investigated further). "bash" is
 # listed directly in mklive-image.sh's sway package set instead, which
 # works reliably and is functionally equivalent for our purposes.
-# We genuinely install straight into /etc (skel content), which
+# We genuinely install straight into /etc (/etc/environment), which
 # cbuild's own lint flags by default ("'/etc' exists, verify if this
 # is necessary and then set the 'etcfiles' option") -- confirmed the
 # real syntax against real templates (main/zsh, main/mc, ...), it's a
@@ -204,7 +208,7 @@ def install(self):
     # would otherwise be for a source-less "meta" package. Verified
     # against cbuild's real source (src/cbuild/core/template.py), not
     # guessed -- see docs/NOTES.md.
-    self.install_files(self.template_path / "skel", "etc")
+    self.install_files(self.template_path / "skel", "usr/share/hybrid-d77")
 
     # cports' lint insists vendor-shipped polkit rules go under
     # /usr/share, not /etc (/etc/polkit-1/rules.d is meant for local

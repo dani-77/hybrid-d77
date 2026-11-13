@@ -46,18 +46,19 @@
 # (wswap-way) bindings, plus d77run's for_window rule, from sway/config and
 # README.md -- none of those programs is in the image (confirmed against the
 # 2026-10-24 sway ISO's rootfs), so the keys did nothing.
+# 2026-11-13: the skel tree now goes to /usr/share/hybrid-d77/skel, not
+# /etc/skel: cports d11913dbc ("cbuild: forbid /etc/skel in lint")
+# reserves /etc/skel for the machine admin. mklive.sh copies it into the
+# image's /etc/skel, which the live user and both installers start from.
 pkgname = "h77-sway-dots"
 pkgver = "0.1.0"
-pkgrel = 1
+pkgrel = 2
 build_style = "meta"
 depends = ["h77-dots", "h77-welcome"]
 pkgdesc = "Sway session dotfiles for hybrid-d77"
 license = "custom:meta"
 url = "https://github.com/dani-77/hybrid-d77"
-# Same reasoning as h77-dots: we genuinely install straight into
-# /etc/skel, cbuild's lint needs that acknowledged explicitly.
-options = ["etcfiles"]
 
 
 def install(self):
-    self.install_files(self.template_path / "skel", "etc")
+    self.install_files(self.template_path / "skel", "usr/share/hybrid-d77")

@@ -18,15 +18,13 @@ CPORTS=/home/builder/cports
 # whether cbuild resolves in-category build order on its own, so this
 # doesn't rely on it. utumno + qsd77 before h77-niri-dots for the same
 # reason (it depends on both).
-H77_PKGS="h77-dots h77-welcome h77-sway-dots quickshell-h77 utumno qsd77 h77-niri-dots h77-installer h77-install-scripts mocinha h77-mocinha"
+H77_PKGS="h77-dots h77-welcome h77-sway-dots quickshell-h77 matugen utumno qsd77 h77-niri-dots h77-installer h77-install-scripts mocinha h77-mocinha"
 
-# cports pinned to the commit right before d11913dbc ("cbuild: forbid
-# /etc/skel in lint", 2026-11-12): that lint fails every package that
-# installs into /etc/skel, which h77-dots, h77-sway-dots and
-# h77-niri-dots all do, with no option to opt out. Pinned until those
-# packages move their files out of /etc/skel. CPORTS_REF=master (or any
-# other commit) overrides it.
-CPORTS_REF="${CPORTS_REF:-9dc6e65a7c4ce3efca4150351eb3d752f6aac72f}"
+# cports master by default. New cbuild lints land there without notice
+# and can break a build with no change on our side; CPORTS_REF=<commit>
+# builds against a fixed cports instead (e.g. to tell such a break apart
+# from one of ours).
+CPORTS_REF="${CPORTS_REF:-master}"
 
 if [ ! -d "$CPORTS/.git" ]; then
 	echo ">> shallow-fetching chimera-linux/cports at $CPORTS_REF (this is a"
