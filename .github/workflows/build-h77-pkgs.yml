@@ -40,7 +40,11 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned: once ubuntu-latest moved to 26.04 (November 2026), apk's
+    # trigger scripts inside cbuild's bwrap root failed with "execve:
+    # Permission denied" while installing build dependencies; the same
+    # build passes on 24.04 and on a local host.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v5
