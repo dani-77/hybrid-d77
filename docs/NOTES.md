@@ -1478,3 +1478,25 @@ so `00-hybrid-d77.conf` takes precedence over `base-files.conf` without
 modifying the base package. The `mklive.sh` step stays, so the image is
 already correct before tmpfiles first runs. Not yet validated with a
 cbuild run or a booted ISO.
+
+### File dialogs never opened: portals had no display (2026-11-17)
+
+Found on an installed niri system: Thunderbird's "Import existing
+OpenPGP key" (and any other file chooser) did nothing, with no error.
+Without systemd, the session D-Bus (dinit's `dbus-daemon.user`) starts
+before the compositor and its activation environment never gets
+`WAYLAND_DISPLAY`/`DISPLAY`; niri and sway only import those into
+systemd. Every D-Bus-activated portal backend therefore exited at once
+(`Gtk-WARNING: cannot open display`; xdg-desktop-portal -v: "Failed to
+create file chooser proxy ... exited with status 1").
+
+Fix: both session configs now run `dbus-update-activation-environment
+WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE=wayland`
+before anything else (`h77-niri-dots` r2, `h77-sway-dots` r3). On niri,
+`xdg-desktop-portal-gnome` 51 also hands its file chooser to Nautilus,
+which the image does not ship, so `h77-niri-dots` additionally ships a
+skel `~/.config/xdg-desktop-portal/niri-portals.conf` (full copy of
+niri's, plus `FileChooser=gtk`). Verified by hand on the installed
+system; not yet validated with a cbuild run or a booted ISO. Existing
+installs do not get the new skel and need the two changes applied by
+hand (see docs/fix-portais-dbus.md).

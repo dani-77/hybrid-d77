@@ -24,9 +24,14 @@
 # /etc/skel: cports d11913dbc ("cbuild: forbid /etc/skel in lint")
 # reserves /etc/skel for the machine admin. mklive.sh copies it into the
 # image's /etc/skel, which the live user and both installers start from.
+# 2026-11-17 (r2): exports WAYLAND_DISPLAY/DISPLAY/XDG_* to the session
+# D-Bus at startup (no systemd, so nothing else does; portal backends
+# died with "cannot open display" and file dialogs never opened), and
+# ships ~/.config/xdg-desktop-portal/niri-portals.conf routing
+# FileChooser to -gtk (xdg-desktop-portal-gnome 51 needs Nautilus).
 pkgname = "h77-niri-dots"
 pkgver = "0.1.0"
-pkgrel = 1
+pkgrel = 2
 build_style = "meta"
 depends = ["h77-dots", "h77-welcome", "qsd77", "utumno"]
 pkgdesc = "Niri session dotfiles for hybrid-d77"

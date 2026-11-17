@@ -50,9 +50,12 @@
 # /etc/skel: cports d11913dbc ("cbuild: forbid /etc/skel in lint")
 # reserves /etc/skel for the machine admin. mklive.sh copies it into the
 # image's /etc/skel, which the live user and both installers start from.
+# 2026-11-17 (r3): sway/config exports WAYLAND_DISPLAY/DISPLAY/XDG_* to
+# the session D-Bus first thing (no systemd, so nothing else does; portal
+# backends died with "cannot open display" and file dialogs never opened).
 pkgname = "h77-sway-dots"
 pkgver = "0.1.0"
-pkgrel = 2
+pkgrel = 3
 build_style = "meta"
 depends = ["h77-dots", "h77-welcome"]
 pkgdesc = "Sway session dotfiles for hybrid-d77"

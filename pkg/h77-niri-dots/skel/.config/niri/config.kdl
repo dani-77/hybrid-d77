@@ -199,6 +199,13 @@ environment {
   ELECTRON_OZONE_PLATFORM_HINT "auto"
   TERMINAL "foot"
 }
+// No systemd here: the session D-Bus (dinit's dbus-daemon.user) starts
+// before niri and never learns the display, so every D-Bus-activated
+// portal backend (xdg-desktop-portal-gtk/-gnome) dies with "cannot open
+// display" and file-chooser dialogs silently never open. niri only
+// imports these into systemd, so push them into D-Bus ourselves -- first,
+// before anything can trigger a portal.
+spawn-at-startup "dbus-update-activation-environment" "WAYLAND_DISPLAY" "DISPLAY" "XDG_CURRENT_DESKTOP" "XDG_SESSION_TYPE=wayland"
 // Same session services the sway variant starts from its own config.
 spawn-at-startup "pipewire"
 spawn-at-startup "udiskie" "-a"

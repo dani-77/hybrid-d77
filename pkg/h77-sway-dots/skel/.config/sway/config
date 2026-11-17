@@ -66,6 +66,14 @@ for_window [app_id="h77-welcome"] floating enable
 for_window [window_type="dialog"] floating enable
 for_window [window_role="dialog"] floating enable
 
+### D-Bus activation environment -- no systemd here: the session D-Bus
+### (dinit's dbus-daemon.user) starts before sway and never learns the
+### display, so every D-Bus-activated portal backend
+### (xdg-desktop-portal-gtk/-wlr) dies with "cannot open display" and
+### file-chooser dialogs silently never open. Must run before anything
+### that could trigger a portal.
+exec dbus-update-activation-environment WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP=sway XDG_SESSION_TYPE=wayland
+
 ### Audio
 exec pipewire &
 
