@@ -4,7 +4,7 @@
 # Shipped on a live and removed from the installed system by Mocinha itself
 # ([live_only].packages).
 pkgname = "mocinha"
-pkgver = "0.1.5"
+pkgver = "0.1.9"
 pkgrel = 0
 pkgdesc = "Small, modular, platform-aware live-system installer"
 license = "MIT"
