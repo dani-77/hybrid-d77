@@ -32,7 +32,7 @@ pkgdesc = "Minimal Quickshell desktop shell for Wayland compositors"
 license = "MIT"
 url = "https://github.com/dani-77/utumno"
 source = f"{url}/archive/refs/tags/{pkgver}.tar.gz"
-sha256 = "cae997a22c31c96bc9c1c37c857cf4757ef16c0e69d43e8761b84d9c95ff2ed6"
+sha256 = "ff4d3d6f6d6f755cdd2be4a2cad293fb1d39e0763ba090e3183123a0ddd9202f"
 
 
 def install(self):
