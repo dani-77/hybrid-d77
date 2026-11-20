@@ -25,7 +25,7 @@
 # link, see container/cbuild-entrypoint.sh) is fixed since 2026-09-25,
 # so declaring them here would now work too.
 pkgname = "utumno"
-pkgver = "0.2.0"
+pkgver = "0.3.0"
 pkgrel = 0
 depends = ["quickshell-h77"]
 pkgdesc = "Minimal Quickshell desktop shell for Wayland compositors"
