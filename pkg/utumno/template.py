@@ -24,15 +24,22 @@
 # "cannot be resolved" error whose real cause (hybrid/ had no .parent
 # link, see container/cbuild-entrypoint.sh) is fixed since 2026-09-25,
 # so declaring them here would now work too.
+#
+# eww + atop (0.4.0 on): clicking CPU or RAM on the bar opens an eww
+# system monitor (monitor/d77-monitor, with its eww.yuck/eww.scss next to
+# it, so no eww config needs installing). Its data comes from dgop, which
+# isn't in cports, or else from atop, which d77-monitor parses itself.
+# Both are in cports' user tier and are declared here, not only in the
+# ISO package set, so h77-update pulls them in on installed systems too.
 pkgname = "utumno"
-pkgver = "0.4.0"
+pkgver = "0.4.1"
 pkgrel = 0
-depends = ["quickshell-h77"]
+depends = ["quickshell-h77", "eww", "atop"]
 pkgdesc = "Minimal Quickshell desktop shell for Wayland compositors"
 license = "MIT"
 url = "https://github.com/dani-77/utumno"
 source = f"{url}/archive/refs/tags/{pkgver}.tar.gz"
-sha256 = "2a606880fbe2530fa0ec9bbf172db118e37899b5fcd800a699caafc859d5bfbe"
+sha256 = "6196f6bd080c04f3b646a87f6b882a15c0144352c25a6549586e8be4a1bbb555"
 
 
 def install(self):

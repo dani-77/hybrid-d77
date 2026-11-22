@@ -245,9 +245,11 @@ h77-sway-dots"
         # upower: Utumno's battery module reads UPower.displayDevice
         # (Quickshell.Services.UPower); without upowerd (D-Bus activated,
         # no dinit service) the bar shows no battery.
+        # eww + atop: Utumno's CPU/RAM system monitor (eww window, atop
+        # data, as dgop isn't in cports). Also utumno's own depends=.
         PKGS="${BASE_PKGS} ${H77_COMMON_PKGS} \
 niri xwayland-satellite swaybg swaync swayidle xdg-desktop-portal-gnome \
-quickshell-h77 matugen utumno qsd77 upower \
+quickshell-h77 matugen utumno qsd77 upower eww atop \
 h77-niri-dots"
         ;;
     *)
