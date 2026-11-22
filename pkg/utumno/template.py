@@ -25,14 +25,14 @@
 # link, see container/cbuild-entrypoint.sh) is fixed since 2026-09-25,
 # so declaring them here would now work too.
 pkgname = "utumno"
-pkgver = "0.3.0"
+pkgver = "0.4.0"
 pkgrel = 0
 depends = ["quickshell-h77"]
 pkgdesc = "Minimal Quickshell desktop shell for Wayland compositors"
 license = "MIT"
 url = "https://github.com/dani-77/utumno"
 source = f"{url}/archive/refs/tags/{pkgver}.tar.gz"
-sha256 = "ff4d3d6f6d6f755cdd2be4a2cad293fb1d39e0763ba090e3183123a0ddd9202f"
+sha256 = "2a606880fbe2530fa0ec9bbf172db118e37899b5fcd800a699caafc859d5bfbe"
 
 
 def install(self):
