@@ -284,7 +284,8 @@ found and fixed via actual hardware testing along the way.
   [qsd77](https://github.com/dani-77/qsd77) -- the same author's own
   shell and its CLI, packaged here from their tagged releases
   (`pkg/utumno`, `pkg/qsd77`); their niri config is adapted from a
-  working niri + quickshell-d77 setup.
+  working niri + quickshell-d77 setup (quickshell-d77 is now archived;
+  Utumno superseded it).
 - [void-mklive](https://github.com/void-linux/void-mklive) — `void-installer`'s
   own real architecture was the reference point for several patches: its
   Groups/Services checklists (things upstream chimera-installer doesn't

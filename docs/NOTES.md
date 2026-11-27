@@ -1302,7 +1302,8 @@ through [qsd77](https://github.com/dani-77/qsd77). New packages:
 - `pkg/qsd77` -- `build_style = "go"` (cbuild's own go style runs `go
   mod download` in prepare), tagged release 1.3.3.
 - `pkg/h77-niri-dots` -- niri config adapted from the user's own
-  working niri + quickshell-d77 setup (`~/exchange/niri-qsd77`): qsd77
+  working niri + quickshell-d77 setup (quickshell-d77 has since been archived
+  in favour of Utumno) (`~/exchange/niri-qsd77`): qsd77
   calls retargeted with `-c utumno`, volume/brightness keys through
   Utumno's `osd` IPC (changes the level AND shows the OSD), own
   `.profile` (`exec niri` on tty1, plain -- `niri --session` wants a
